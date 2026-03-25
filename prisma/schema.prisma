@@ -1,0 +1,107 @@
+// Config de base
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. Table Utilisateur [cite: 1]
+model User {
+  id                      Int            @id @default(autoincrement()) 
+  email                   String         @unique
+  password_hash           String         
+  nom                     String
+  prenom                  String         
+  username                String         @unique
+  phone                   String    
+  age                     Int    
+  sex                     String         
+  weight                  Float          
+  height                  Float          
+  region                  String       
+  avatar_url              String       
+  num_intense_activities  Int            
+  num_moderate_activities Int            
+  biography               String       @db.Text
+  daily_goal              Int            
+
+  // Relations
+  hydrationLogs           HydrationLog[]
+  createdChallenges       Challenge[]    @relation("Creator")
+  participations          ChallengeParticipant[]
+  
+  // Amitiés (Relationships)
+  followers               Relationship[] @relation("Followee")
+  following               Relationship[] @relation("Follower")
+}
+
+// 2. Table Relationship (Amitiés/Follow) 
+model Relationship {
+  followerID  Int     
+  followeeID  Int    
+  status      String 
+  created_at  DateTime @default(now())
+
+  follower    User     @relation("Follower", fields: [followerID], references: [id])
+  followee    User     @relation("Followee", fields: [followeeID], references: [id])
+
+  @@id([followerID, followeeID]) // Clé composite 
+}
+
+// 3. Table HydrationLog (Données ESP32) 
+model HydrationLog {
+  userID       Int    
+  measured_at  DateTime @default(now()) 
+  weight_value Float    
+
+  user         User     @relation(fields: [userID], references: [id])
+
+  @@id([userID, measured_at]) // Clé composite 
+}
+
+// 4. Table Challenge
+model Challenge {
+  id           Int          @id @default(autoincrement()) 
+  creator_id   Int          
+  created_at   DateTime     @default(now()) 
+  title        String      
+  description  String      @db.Text
+  start_date   DateTime     
+  end_date     DateTime
+  status       String       
+
+  creator      User         @relation("Creator", fields: [creator_id], references: [id])
+  participants ChallengeParticipant[]
+}
+
+// 5. Table Challenge Participants (Liaison User/Challenge)
+model ChallengeParticipant {
+  id           Int       @id @default(autoincrement()) 
+  challengeID  Int      
+  userID       Int       
+  joined_date  DateTime  @default(now()) 
+  status       String    // 'active', 'quit', 'completed' 
+
+  challenge    Challenge @relation(fields: [challengeID], references: [id])
+  user         User      @relation(fields: [userID], references: [id])
+}
+
+// 6. Table Goal (Objectifs spécifiques) 
+model Goal {
+  id           Int      @id @default(autoincrement()) 
+  goal_type_id Int      
+  valeur       Float
+  start_date   DateTime 
+  end_date     DateTime
+  status       String  
+}
+
+// 7. Table GoalType 
+model GoalType {
+  id           Int      @id @default(autoincrement()) 
+  unite        String   // e.g., 'mL per day' 
+  duree        String   
+}

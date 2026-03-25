@@ -1,34 +1,36 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+import { HydrationDAO } from './dao/hydration.dao'; 
 
 const app = express();
-const prisma = new PrismaClient();
-
 app.use(express.json());
 
 app.post('/api/water', async (req, res) => {
   try {
     const { userId, weight } = req.body;
 
-    const newLog = await prisma.hydrationLog.create({
-      data: {
-        userID: userId,
-        weight_value: weight,
-        measured_at: new Date() 
-      }
-    });
+    const newLog = await HydrationDAO.createLog(userId, weight);
 
-    console.log("✅ received and saved:", newLog);
-
-    res.status(200).json({ message: "success！", data: newLog });
-
+    res.status(200).json({ message: "Data saved successfully！", data: newLog });
   } catch (error) {
-    console.error("❌ save failed：", error);
-    res.status(500).json({ error: "save failed" });
+    res.status(500).json({ error: "server error" });
+  }
+});
+
+
+app.get('/api/water/history/:userId', async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId);
+    
+
+    const history = await HydrationDAO.getHistoryByUserId(userId);
+    
+    res.status(200).json(history);
+  } catch (error) {
+    res.status(500).json({ error: "server error" });
   }
 });
 
 const PORT = 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 backend server is running at :http://localhost:${PORT}`);
+  console.log(`🚀 server：http://localhost:${PORT}`);
 });

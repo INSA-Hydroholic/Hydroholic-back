@@ -92,6 +92,7 @@ model ChallengeParticipant {
 // 6. Table Goal (Objectifs spécifiques) 
 model Goal {
   id           Int      @id @default(autoincrement()) 
+  userID       Int 
   goal_type_id Int      
   valeur       Float
   start_date   DateTime 

@@ -7,6 +7,7 @@ import { ChallengeParticipantDAO } from './dao/participant.dao';
 const app = express();
 app.use(express.json());
 
+// Register a new user
 app.post('/api/users', async (req, res) => {
     try {
         const newUser = await UserDAO.createUser(req.body);
@@ -16,6 +17,7 @@ app.post('/api/users', async (req, res) => {
     }
 });
 
+// Get single user information
 app.get('/api/users/:id', async (req, res) => {
     try {
         const userId = parseInt(req.params.id);
@@ -27,6 +29,7 @@ app.get('/api/users/:id', async (req, res) => {
     }
 });
 
+// Update user information (e.g., modify weight, goals)
 app.put('/api/users/:id', async (req, res) => {
     try {
         const userId = parseInt(req.params.id);
@@ -37,8 +40,10 @@ app.put('/api/users/:id', async (req, res) => {
     }
 });
 
+// Hardware sends hydration data
 app.post('/api/water', async (req, res) => {
     try {
+        // Assume hardware sends { "userID": 1, "weight_value": 250.5 }
         const newLog = await HydrationDAO.createHydrationLog(req.body);
         res.status(201).json({ message: "Hydration data recorded", data: newLog });
     } catch (error) {
@@ -46,6 +51,7 @@ app.post('/api/water', async (req, res) => {
     }
 });
 
+// Get all hydration history for a user (Endpoint used by frontend HistoryCard)
 app.get('/api/water/history/:userId', async (req, res) => {
     try {
         const userId = parseInt(req.params.userId);
@@ -56,6 +62,8 @@ app.get('/api/water/history/:userId', async (req, res) => {
     }
 });
 
+// Get hydration records within a date range (e.g., checking weekly data)
+// Example request: /api/water/history/range/1?start=2026-03-01&end=2026-03-07
 app.get('/api/water/history/range/:userId', async (req, res) => {
     try {
         const userId = parseInt(req.params.userId);
@@ -68,6 +76,7 @@ app.get('/api/water/history/range/:userId', async (req, res) => {
     }
 });
 
+// Create a new challenge
 app.post('/api/challenges', async (req, res) => {
     try {
         const newChallenge = await ChallengeDAO.createChallenge(req.body);
@@ -77,6 +86,7 @@ app.post('/api/challenges', async (req, res) => {
     }
 });
 
+// Get all challenges a user is participating in
 app.get('/api/challenges/user/:userId', async (req, res) => {
     try {
         const userId = parseInt(req.params.userId);
@@ -87,6 +97,7 @@ app.get('/api/challenges/user/:userId', async (req, res) => {
     }
 });
 
+// Delete a challenge
 app.delete('/api/challenges/:id', async (req, res) => {
     try {
         const challengeId = parseInt(req.params.id);
@@ -97,6 +108,8 @@ app.delete('/api/challenges/:id', async (req, res) => {
     }
 });
 
+
+// User joins a challenge
 app.post('/api/participants', async (req, res) => {
     try {
         const participation = await ChallengeParticipantDAO.createParticipant(req.body);
@@ -105,6 +118,7 @@ app.post('/api/participants', async (req, res) => {
         res.status(500).json({ error: "Failed to join the challenge" });
     }
 });
+
 
 const PORT = 3000;
 app.listen(PORT, () => {

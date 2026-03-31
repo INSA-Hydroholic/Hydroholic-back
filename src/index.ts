@@ -1,0 +1,45 @@
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+
+import authRouter from './routes/auth';
+import challengesRouter from './routes/challenges';
+import usersRouter from './routes/users';
+
+dotenv.config();
+
+const app = express();
+
+// =====================================
+// 1. middlewares globaux
+// =====================================
+app.use(cors()); // autoriser les requêtes cross-origin (du front qui tourne sur un autre port)
+app.use(express.json()); // let server understand JSON payloads
+
+// =====================================
+// 2. load des routes
+// =====================================
+app.use('/api/auth', authRouter);
+app.use('/api/challenges', challengesRouter);
+app.use('/api/users', usersRouter);
+
+// check server status
+app.get('/api/ping', (req, res) => {
+  res.json({ status: 'ok', message: '🚀 Hydroholic PostgreSQL backend en marche !' });
+});
+
+// =====================================
+// 3. start the server
+// =====================================
+const PORT = Number(process.env.PORT || 4000);
+
+app.listen(PORT, () => {
+  // eslint-disable-next-line no-console
+  console.log(`
+  ======================================================
+  🚀 Hydroholic Backend Démarré !
+  📡 Adresse : http://localhost:${PORT}
+  🗄️  Base de données : PostgreSQL (via Prisma)
+  ======================================================
+  `);
+});

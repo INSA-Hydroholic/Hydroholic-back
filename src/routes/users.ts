@@ -5,7 +5,7 @@ import { HydrationDAO } from '../dao/hydration.dao';
 import { authMiddleware } from '../middlewares/auth.middleware';
 
 const router = Router();
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
 
 // get all users
 router.get('/', async (req, res) => {
@@ -35,24 +35,24 @@ router.get('/:userId', async (req, res) => {
 });
 
 // get user ranking (based on total water consumed)
-// 推荐在 src/routes/users.ts 中这样改写排行榜接口
 router.get('/ranking/all', async (req, res) => {
-  try {
-    const ranking = await prisma.hydrationLog.groupBy({
-      by: ['userID'],
-      _sum: {
-        volume_ml: true,
-      },
-      orderBy: {
-        _sum: {
-          volume_ml: 'desc',
-        },
-      },
-    });
-    res.json(ranking);
-  } catch (error) {
-    res.status(500).json({ message: 'Erreur lors du calcul du classement' });
-  }
+  const ranking = await prisma.hydrationLog.groupBy({
+    by: ['userID'],
+    _sum: { volume_ml: true },
+    orderBy: { _sum: { volume_ml: 'desc' } },
+  });
+
+  const userIds = ranking.map(r => r.userID);
+  const users = await prisma.user.findMany({
+    where: { id: { in: userIds } },
+    select: { id: true, username: true }
+  });
+
+  const fullRanking = ranking.map(r => ({
+    ...r,
+    username: users.find(u => u.id === r.userID)?.username || 'Unknown'
+  }));
+  res.json(fullRanking);
 });
 
 router.post('/:userId/water', authMiddleware, async (req: any, res: any) => {

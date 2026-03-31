@@ -1,5 +1,5 @@
 import { PrismaClient, Prisma } from '@prisma/client';
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
 
 export const GoalTypeDAO = {
     createGoalType: async (data: Prisma.GoalTypeCreateInput) => {

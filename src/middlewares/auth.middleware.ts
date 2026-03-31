@@ -22,7 +22,7 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
 
   try {
     // 3. chekk if the token is valid and not expired
-    const decoded = jwt.verify(token, JWT_SECRET) as { sub: number; username: string };
+    const decoded = jwt.verify(token, JWT_SECRET) as unknown as { sub: number; username: string };
     
     // 4. successfully verified, attach the user info to req.user for downstream use
     req.user = decoded;

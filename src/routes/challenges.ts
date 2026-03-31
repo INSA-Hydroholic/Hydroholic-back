@@ -4,7 +4,7 @@ import { ChallengeDAO } from '../dao/challenge.dao';
 import { ChallengeParticipantDAO } from '../dao/participant.dao';
 
 const router = Router();
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
 
 // get all challenges
 router.get('/', async (req, res) => {

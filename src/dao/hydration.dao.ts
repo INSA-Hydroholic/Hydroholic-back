@@ -1,6 +1,6 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
 
 export const HydrationDAO = {
     //create
@@ -30,26 +30,18 @@ export const HydrationDAO = {
         });
     },
     //update
-    updateHydrationLog: async (userId: number, timeString: string, dataToUpdate: Prisma.HydrationLogUpdateInput) => {
+    updateHydrationLog: async (logId: number, dataToUpdate: Prisma.HydrationLogUpdateInput) => {
         return await prisma.hydrationLog.update({
-        where: {
-            userID_measured_at: {
-                userID: userId,
-                measured_at: new Date(timeString)
-            }
-        },
-        data: dataToUpdate
+            where: { id: logId },
+            data: dataToUpdate
         });
     },
 
     //delete
-    deleteLog: async (userId: number, timeString: string) => {
+    deleteLog: async (logId: number) => {
     return await prisma.hydrationLog.delete({
       where: {
-        userID_measured_at: {
-          userID: userId,
-          measured_at: new Date(timeString)
-        }
+        id: logId
       }
     });
   }

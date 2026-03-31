@@ -69,6 +69,8 @@ router.post('/:userId/water', async (req, res) => {
     const newLog = await HydrationDAO.createHydrationLog({
       user: { connect: { id: userId } },
       weight_value: amountMl,
+      volume_ml: amountMl,
+      source: 'app',
     });
 
     res.json({ message: 'Eau ajoutée avec succès', data: newLog });

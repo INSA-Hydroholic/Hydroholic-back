@@ -11,27 +11,27 @@ export const RelationshipDAO = {
     //read
     getFollowers: async (userId: number) => {
         return await prisma.relationship.findMany({
-            where: { followeeID: userId },
-            include: { follower: true }
+            where: { receiverID: userId },
+            include: { requester: true }
         });
     },
     getFollowing: async (userId: number) => {
         return await prisma.relationship.findMany({
-            where: { followerID: userId },
-            include: { followee: true }
+            where: { requesterID: userId },
+            include: { receiver: true }
         });
     },
     //update
-    updateRelationship: async (followerId: number, followeeId: number, dataToUpdate: Prisma.RelationshipUpdateInput) => {
+    updateRelationship: async (requesterId: number, receiverId: number, dataToUpdate: Prisma.RelationshipUpdateInput) => {
         return await prisma.relationship.update({
-            where: { followerID_followeeID: { followerID: followerId, followeeID: followeeId } },
+            where: { requesterID_receiverID: { requesterID: requesterId, receiverID: receiverId } },
             data: dataToUpdate
         });
     },
     //delete
-    deleteRelationship: async (followerId: number, followeeId: number) => {
+    deleteRelationship: async (requesterId: number, receiverId: number) => {
         return await prisma.relationship.delete({
-            where: { followerID_followeeID: { followerID: followerId, followeeID: followeeId } }
+where: { requesterID_receiverID: { requesterID: requesterId, receiverID: receiverId } }
         });
     }
 };

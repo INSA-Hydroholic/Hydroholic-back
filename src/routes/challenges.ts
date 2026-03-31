@@ -41,7 +41,10 @@ router.post('/', async (req, res) => {
     
     const newChallenge = await ChallengeDAO.createChallenge({
       title: name,
+      description: description || null,
       status: 'active',
+      challenge_type: type || 'global',
+      objective_ml: parseInt(objective) || 0,
       start_date: new Date(),
       end_date: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000),
       creator: { connect: { id: parseInt(creatorId) } }

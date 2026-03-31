@@ -8,7 +8,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// 1. Table Utilisateur [cite: 1]
+// 1. Table Utilisateur
 model User {
   id                      Int            @id @default(autoincrement()) 
   email                   String         @unique
@@ -16,93 +16,109 @@ model User {
   nom                     String
   prenom                  String         
   username                String         @unique
-  phone                   String    
-  age                     Int    
-  sex                     String         
-  weight                  Float          
-  height                  Float          
-  region                  String       
-  avatar_url              String       
-  num_intense_activities  Int            
-  num_moderate_activities Int            
-  biography               String       @db.Text
-  daily_goal              Int            
+  phone                   String?        // Optionnel à l'inscription selon le contrat
+  age                     Int?    
+  sex                     String?         
+  weight                  Float?          
+  height                  Float?          
+  region                  String?       
+  avatar_url              String?       
+  num_intense_activities  Int            @default(0)
+  num_moderate_activities Int            @default(0)
+  biography               String?        @db.Text
+  daily_goal              Int            @default(2000) // Unité en ml
+  
+  created_at              DateTime       @default(now())
+  updated_at              DateTime       @updatedAt // Règle transversale 10
 
   // Relations
   hydrationLogs           HydrationLog[]
   createdChallenges       Challenge[]    @relation("Creator")
   participations          ChallengeParticipant[]
   
-  // Amitiés (Relationships)
-  followers               Relationship[] @relation("Followee")
-  following               Relationship[] @relation("Follower")
+  // Relations d'amitié (Refonte selon le point 5)
+  sentRequests            Relationship[] @relation("Requester")
+  receivedRequests        Relationship[] @relation("Receiver")
+  
+  goals                   Goal[]
 }
 
-// 2. Table Relationship (Amitiés/Follow) 
+// 2. Table Relationship (Amis) - Adaptée au point 5 du contrat
 model Relationship {
-  followerID  Int     
-  followeeID  Int    
-  status      String 
+  requesterID Int     
+  receiverID  Int    
+  status      String   // 'PENDING', 'ACCEPTED', 'REJECTED'
   created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
 
-  follower    User     @relation("Follower", fields: [followerID], references: [id])
-  followee    User     @relation("Followee", fields: [followeeID], references: [id])
+  requester   User     @relation("Requester", fields: [requesterID], references: [id])
+  receiver    User     @relation("Receiver", fields: [receiverID], references: [id])
 
-  @@id([followerID, followeeID]) // Clé composite 
+  @@id([requesterID, receiverID]) 
 }
 
-// 3. Table HydrationLog (Données ESP32) 
+// 3. Table HydrationLog - Adaptée au point 4 du contrat
 model HydrationLog {
+  id           Int      @id @default(autoincrement()) // ID unique recommandé pour éviter les collisions
   userID       Int    
   measured_at  DateTime @default(now()) 
-  weight_value Float    
+  weight_value Float?   // Donnée brute IoT
+  volume_ml    Int      // Unité obligatoire selon contrat
+  source       String   // 'app', 'iot'
 
   user         User     @relation(fields: [userID], references: [id])
-
-  @@id([userID, measured_at]) // Clé composite 
 }
 
-// 4. Table Challenge
+// 4. Table Challenge - Adaptée au point 6 du contrat
 model Challenge {
-  id           Int          @id @default(autoincrement()) 
-  creator_id   Int          
-  created_at   DateTime     @default(now()) 
-  title        String      
-  description  String      @db.Text
-  start_date   DateTime     
-  end_date     DateTime
-  status       String       
+  id             Int          @id @default(autoincrement()) 
+  creator_id     Int          
+  title          String      
+  description    String?      @db.Text
+  start_date     DateTime     
+  end_date       DateTime
+  status         String       // 'active', 'completed', 'cancelled'
+  challenge_type String       // 'friends', 'global'
+  objective_ml   Int          // Objectif total du défi
+  
+  created_at     DateTime     @default(now())
+  updated_at     DateTime     @updatedAt
 
-  creator      User         @relation("Creator", fields: [creator_id], references: [id])
-  participants ChallengeParticipant[]
+  creator        User         @relation("Creator", fields: [creator_id], references: [id])
+  participants   ChallengeParticipant[]
 }
 
-// 5. Table Challenge Participants (Liaison User/Challenge)
+// 5. Table Challenge Participants
 model ChallengeParticipant {
   id           Int       @id @default(autoincrement()) 
   challengeID  Int      
   userID       Int       
   joined_date  DateTime  @default(now()) 
-  status       String    // 'active', 'quit', 'completed' 
+  progress_ml  Int       @default(0) // Suivi de progression requis par le point 7
+  status       String    // 'active', 'quit', 'completed'
 
   challenge    Challenge @relation(fields: [challengeID], references: [id])
   user         User      @relation(fields: [userID], references: [id])
 }
 
-// 6. Table Goal (Objectifs spécifiques) 
+// 6. Table Goal - Adaptée au point 8
 model Goal {
   id           Int      @id @default(autoincrement()) 
   userID       Int 
   goal_type_id Int      
-  valeur       Float
+  value        Float    // Renommé 'value' pour matcher le contrat
   start_date   DateTime 
   end_date     DateTime
-  status       String  
+  status       String   // 'active', 'completed', 'cancelled'
+
+  user         User     @relation(fields: [userID], references: [id])
+  goalType     GoalType @relation(fields: [goal_type_id], references: [id])
 }
 
 // 7. Table GoalType 
 model GoalType {
   id           Int      @id @default(autoincrement()) 
-  unite        String   // e.g., 'mL per day' 
-  duree        String   
+  unite        String   // 'ml'
+  duree        String   // 'daily', 'weekly'
+  goals        Goal[]
 }

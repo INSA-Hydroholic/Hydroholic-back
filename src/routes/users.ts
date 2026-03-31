@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { UserDAO } from '../dao/user.dao';
 import { HydrationDAO } from '../dao/hydration.dao';
+import { authMiddleware } from '../middlewares/auth.middleware';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -34,32 +35,34 @@ router.get('/:userId', async (req, res) => {
 });
 
 // get user ranking (based on total water consumed)
+// 推荐在 src/routes/users.ts 中这样改写排行榜接口
 router.get('/ranking/all', async (req, res) => {
   try {
-    // get all users with their hydration logs
-    const users = await prisma.user.findMany({
-      include: { hydrationLogs: true }
+    const ranking = await prisma.hydrationLog.groupBy({
+      by: ['userID'],
+      _sum: {
+        volume_ml: true,
+      },
+      orderBy: {
+        _sum: {
+          volume_ml: 'desc',
+        },
+      },
     });
-
-    const ranking = users.map(u => {
-      // compute total water consumed for each user
-      const totalWater = u.hydrationLogs.reduce((sum, log) => sum + log.weight_value, 0);
-      return { 
-        username: u.username, 
-        waterCompletedMl: totalWater,
-        score: totalWater
-      };
-    }).sort((a, b) => b.score - a.score); // sort by score descending
-
     res.json(ranking);
   } catch (error) {
     res.status(500).json({ message: 'Erreur lors du calcul du classement' });
   }
 });
 
-router.post('/:userId/water', async (req, res) => {
+router.post('/:userId/water', authMiddleware, async (req: any, res: any) => {
   try {
-    const userId = parseInt(req.params.userId);
+    const userIdFromUrl = parseInt(req.params.userId);
+    const authenticatedUserId = req.user.sub;
+
+    if (isNaN(userIdFromUrl) || userIdFromUrl !== authenticatedUserId) {
+      return res.status(403).json({ message: 'you can not add water for another user' });
+    }
     const { amountMl } = req.body;
 
     if (!amountMl || amountMl <= 0) {
@@ -67,16 +70,18 @@ router.post('/:userId/water', async (req, res) => {
     }
 
     const newLog = await HydrationDAO.createHydrationLog({
-      user: { connect: { id: userId } },
+      user: { connect: { id: userIdFromUrl } },
       weight_value: amountMl,
       volume_ml: amountMl,
       source: 'app',
     });
 
     res.json({ message: 'Eau ajoutée avec succès', data: newLog });
+    
   } catch (error) {
-    res.status(500).json({ message: 'Erreur lors de l ajout de l eau' });
+    res.status(500).json({ message: 'server error' });
   }
+  
 });
 
 // get fake recommendations for a user (this is just a placeholder)

@@ -37,7 +37,7 @@ router.get('/:challengeId', async (req, res) => {
 // create a new challenge
 router.post('/', async (req, res) => {
   try {
-    const { name, type, objective, duration, creatorId } = req.body;
+    const { name, type, objective, duration, creatorId, description } = req.body;
     
     const newChallenge = await ChallengeDAO.createChallenge({
       title: name,

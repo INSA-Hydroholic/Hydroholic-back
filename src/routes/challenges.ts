@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { ChallengeDAO } from '../dao/challenge.dao';
 import { ChallengeParticipantDAO } from '../dao/participant.dao';
 

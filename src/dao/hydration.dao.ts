@@ -29,6 +29,18 @@ export const HydrationDAO = {
         orderBy: { measured_at: 'desc' }
         });
     },
+
+    getDailySumsByRange: async (userId: number, startDate: Date, endDate: Date) => {
+        return await prisma.hydrationLog.groupBy({
+            by: ['measured_at'],
+            where: {
+                userID: userId,
+                measured_at: { gte: startDate, lte: endDate }
+            },
+            _sum: { volume_ml: true }
+        });
+    },
+    
     //update
     updateHydrationLog: async (logId: number, dataToUpdate: Prisma.HydrationLogUpdateInput) => {
         return await prisma.hydrationLog.update({

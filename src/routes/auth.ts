@@ -8,12 +8,12 @@ const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'change-me-secret';
 const JWT_EXPIRES_IN = '7d';
 
-// 签发 Token 的小工具
+// little helper to create JWT token
 const createToken = (userId: number, username: string): string => {
   return jwt.sign({ sub: userId, username }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 };
 
-// 1. 注册接口
+// 1. register
 router.post('/register', async (req, res) => {
   try {
     const { username, email, password, fullname } = req.body;
@@ -21,7 +21,6 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'username, email et password sont requis' });
     }
 
-    // 检查是否已存在
     const existingUsers = await UserDAO.getByInfo({
       OR: [{ username }, { email }]
     });
@@ -30,13 +29,12 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ message: 'Utilisateur déjà existant' });
     }
 
-    // 密码加密并创建用户 (如果有其他必填字段，这里给了默认值)
     const passwordHash = await bcrypt.hash(password, 10);
     const newUser = await UserDAO.createUser({
       username,
       email,
       password_hash: passwordHash,
-      nom: fullname || 'Utilisateur', // 兼容 Maria 前端的 fullname
+      nom: fullname || 'Utilisateur',
       prenom: '',
     });
 
@@ -49,7 +47,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// 2. 登录接口
+//login
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -77,7 +75,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// 3. 获取当前登录用户信息 
+// 3. get current user
 router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.sub;

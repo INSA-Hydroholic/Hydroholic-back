@@ -4,8 +4,8 @@ import { prisma } from '../lib/prisma';
 
 export const HydrationDAO = {
     //create
-    createHydrationLog: async (logdata: Prisma.HydrationLogCreateInput) => {
-        return await prisma.hydrationLog.create({
+    createHydrationLog: async (logdata: Prisma.HydrationLogCreateInput, tx?: any) => {
+        return await (tx || prisma).hydrationLog.create({
         data: logdata
         });
     },

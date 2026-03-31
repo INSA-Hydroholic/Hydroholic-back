@@ -6,6 +6,7 @@ import { authMiddleware } from '../middlewares/auth.middleware';
 
 const router = Router();
 import { prisma } from '../lib/prisma';
+import { HydrationService } from '../service/hydration.service';
 
 // get all users
 router.get('/', async (req, res) => {
@@ -68,20 +69,14 @@ router.post('/:userId/water', authMiddleware, async (req: any, res: any) => {
     if (!amountMl || amountMl <= 0) {
       return res.status(400).json({ message: 'amountMl > 0 requis' });
     }
-
-    const newLog = await HydrationDAO.createHydrationLog({
-      user: { connect: { id: userIdFromUrl } },
-      weight_value: amountMl,
-      volume_ml: amountMl,
-      source: 'app',
-    });
+    const newLog = await HydrationService.logWater(userIdFromUrl, amountMl, 'app');
 
     res.json({ message: 'Eau ajoutée avec succès', data: newLog });
-    
+
   } catch (error) {
     res.status(500).json({ message: 'server error' });
   }
-  
+
 });
 
 // get fake recommendations for a user (this is just a placeholder)

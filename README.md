@@ -5,3 +5,15 @@ Install dependencies from `package.json` by running the following from the home 
 ```bash
 npm install
 ```
+
+## Prisma
+You can use Prisma to manage the database directly from the command line. i.e., to apply the latest schema changes to the database, run:
+```bash
+npx prisma db push
+```
+
+## Running the project
+To run the project in development mode, use the following command:
+```bash
+npm run dev
+```

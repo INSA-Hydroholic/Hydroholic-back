@@ -10,15 +10,17 @@ dotenv.config();
 
 const app = express();
 
-// =====================================
 // 1. middlewares globaux
-// =====================================
 app.use(cors()); // autoriser les requêtes cross-origin (du front qui tourne sur un autre port)
 app.use(express.json()); // let server understand JSON payloads
 
-// =====================================
+// Log every request (for debugging)
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  next();
+});
+
 // 2. load des routes
-// =====================================
 app.use('/api/auth', authRouter);
 app.use('/api/challenges', challengesRouter);
 app.use('/api/users', usersRouter);
@@ -28,9 +30,7 @@ app.get('/api/ping', (req, res) => {
   res.json({ status: 'ok', message: '🚀 Hydroholic PostgreSQL backend en marche !' });
 });
 
-// =====================================
 // 3. start the server
-// =====================================
 const PORT = Number(process.env.PORT || 4000);
 
 app.listen(PORT, () => {

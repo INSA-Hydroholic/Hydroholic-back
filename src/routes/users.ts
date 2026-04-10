@@ -39,8 +39,10 @@ router.get('/:userId', async (req, res) => {
 router.get('/ranking/all', async (req, res) => {
   const ranking = await prisma.hydrationLog.groupBy({
     by: ['userID'],
-    _sum: { volume_ml: true },
-    orderBy: { _sum: { volume_ml: 'desc' } },
+    // TODO: the ranking should be calculated on a time range (e.g. last 7 days) instead of all time
+    _sum: { weight: true },
+    orderBy: { _sum: { weight: 'desc' } },
+    take: 10
   });
 
   const userIds = ranking.map(r => r.userID);
@@ -62,14 +64,14 @@ router.post('/:userId/water', authMiddleware, async (req: any, res: any) => {
     const authenticatedUserId = req.user.sub;
 
     if (isNaN(userIdFromUrl) || userIdFromUrl !== authenticatedUserId) {
-      return res.status(403).json({ message: 'you can not add water for another user' });
+      return res.status(403).json({ message: 'You can not add water for another user' });
     }
-    const { amountMl } = req.body;
+    const { weight } = req.body;
 
-    if (!amountMl || amountMl <= 0) {
-      return res.status(400).json({ message: 'amountMl > 0 requis' });
+    if (!weight || weight <= 0) {
+      return res.status(400).json({ message: `Weight must be a positive number. Received: ${weight}` });
     }
-    const newLog = await HydrationService.logWater(userIdFromUrl, amountMl, 'app');
+    const newLog = await HydrationService.logWater(userIdFromUrl, weight, 'app');
 
     res.json({ message: 'Eau ajoutée avec succès', data: newLog });
 

@@ -58,14 +58,15 @@ model Relationship {
 
 // 3. Table HydrationLog - Adaptée au point 4 du contrat
 model HydrationLog {
-  id           Int      @id @default(autoincrement()) // ID unique recommandé pour éviter les collisions
-  userID       Int    
-  measured_at  DateTime @default(now()) 
-  weight_value Float?   // Donnée brute IoT
-  volume_ml    Int      // Unité obligatoire selon contrat
-  source       String   // 'app', 'iot'
+  id            Int      @id @default(autoincrement()) // ID unique recommandé pour éviter les collisions
+  userID        Int    
+  // adc_value     Int      // ADC raw value from the loadcell  -- Not currently stored, but can be added if needed for debugging or future features
+  weight        Float    // Data measured from the loadcell, converted to mass (g)
+  source        String   @default("hydrobase")  // 'app', 'hydrobase', 'other'
+  measured_at   DateTime @default(now()) 
+  submitted_at  DateTime @default(now())
 
-  user         User     @relation(fields: [userID], references: [id])
+  user          User     @relation(fields: [userID], references: [id])
 }
 
 // 4. Table Challenge - Adaptée au point 6 du contrat

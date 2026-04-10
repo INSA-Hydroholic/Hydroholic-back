@@ -139,12 +139,12 @@ async function main() {
 
   await prisma.hydrationLog.createMany({
     data: [
-      { userID: alice.id, measured_at: addDays(now, -2), weight_value: 140.2, volume_ml: 350, source: 'app' },
-      { userID: alice.id, measured_at: addDays(now, -1), weight_value: 139.4, volume_ml: 500, source: 'iot' },
-      { userID: bob.id, measured_at: addDays(now, -2), weight_value: 180.5, volume_ml: 400, source: 'app' },
-      { userID: bob.id, measured_at: addDays(now, -1), weight_value: 179.8, volume_ml: 700, source: 'iot' },
-      { userID: clara.id, measured_at: addDays(now, -1), weight_value: 155.9, volume_ml: 300, source: 'app' },
-      { userID: david.id, measured_at: addDays(now, -1), weight_value: 170.4, volume_ml: 450, source: 'iot' },
+      { userID: alice.id, measured_at: addDays(now, -2), weight: 140.2, source: 'app' },
+      { userID: alice.id, measured_at: addDays(now, -1), weight: 139.4, source: 'hydrobase' },
+      { userID: bob.id, measured_at: addDays(now, -2), weight: 180.5, source: 'app' },
+      { userID: bob.id, measured_at: addDays(now, -1), weight: 179.8, source: 'hydrobase' },
+      { userID: clara.id, measured_at: addDays(now, -1), weight: 155.9, source: 'app' },
+      { userID: david.id, measured_at: addDays(now, -1), weight: 170.4, source: 'hydrobase' },
     ],
   });
 

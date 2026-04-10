@@ -3,18 +3,18 @@ import { HydrationDAO } from '../dao/hydration.dao';
 import { UserDAO } from '../dao/user.dao';
 
 export const HydrationService = {
-  async logWater(userId: number, amount: number, source: string) {
+  async logWater(userId: number, weightGrams: number, source: string) {
     return await prisma.$transaction(async (tx) => {
       
       const newLog = await HydrationDAO.createHydrationLog({
         user: { connect: { id: userId } },
-        volume_ml: amount,
+        weight: weightGrams,
         source: source,
       }, tx);
 
       await tx.challengeParticipant.updateMany({
         where: { userID: userId, status: 'active' },
-        data: { progress_ml: { increment: amount } }
+        data: { progress_ml: { increment: weightGrams } }
       });
 
       return newLog;
@@ -30,7 +30,7 @@ export const HydrationService = {
     // hypothese: data like "YYYY-MM-DD"
     const logMap = new Map(dbLogs.map(log => [
       log.measured_at.toISOString().split('T')[0], 
-      log._sum.volume_ml || 0
+      log._sum?.weight || 0
     ]));
 
     const history = [];

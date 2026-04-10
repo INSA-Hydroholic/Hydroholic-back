@@ -16,7 +16,7 @@ router.get('/', async (req, res) => {
     });
     res.json(users);
   } catch (error) {
-    res.status(500).json({ message: 'Erreur serveur' });
+    res.status(500).json({ message: `Server error: ${error}` });
   }
 });
 
@@ -31,7 +31,7 @@ router.get('/:userId', async (req, res) => {
     const { password_hash, ...safeUser } = user;
     res.json(safeUser);
   } catch (error) {
-    res.status(500).json({ message: 'Erreur serveur' });
+    res.status(500).json({ message: `Server error: ${error}` });
   }
 });
 
@@ -74,7 +74,7 @@ router.post('/:userId/water', authMiddleware, async (req: any, res: any) => {
     res.json({ message: 'Eau ajoutée avec succès', data: newLog });
 
   } catch (error) {
-    res.status(500).json({ message: 'server error' });
+    res.status(500).json({ message: `Server error: ${error}` });
   }
 
 });

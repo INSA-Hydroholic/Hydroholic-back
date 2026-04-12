@@ -31,7 +31,7 @@ app.get('/api/ping', (req, res) => {
 });
 
 // 3. start the server
-const PORT = Number(process.env.PORT || 4000);
+const PORT = Number(process.env.SERVER_PORT || 4000);
 
 app.listen(PORT, () => {
   // eslint-disable-next-line no-console

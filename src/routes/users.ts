@@ -66,14 +66,19 @@ router.post('/:userId/water', authMiddleware, async (req: any, res: any) => {
     if (isNaN(userIdFromUrl) || userIdFromUrl !== authenticatedUserId) {
       return res.status(403).json({ message: 'You can not add water for another user' });
     }
-    const { weight } = req.body;
+    const { weight, source, measured_at } = req.body;
 
     if (!weight || weight <= 0) {
       return res.status(400).json({ message: `Weight must be a positive number. Received: ${weight}` });
     }
-    const newLog = await HydrationService.logWater(userIdFromUrl, weight, 'app');
+    const newLog = await HydrationService.logWater({
+      userId: userIdFromUrl,
+      weight,
+      source: source || 'app',
+      measured_at: measured_at ? new Date(measured_at) : new Date()
+    });
 
-    res.json({ message: 'Eau ajoutée avec succès', data: newLog });
+    res.json({ message: 'Log ajoutée avec succès', data: newLog });
 
   } catch (error) {
     res.status(500).json({ message: `Server error: ${error}` });

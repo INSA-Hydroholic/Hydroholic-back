@@ -2,19 +2,28 @@ import { prisma } from '../lib/prisma';
 import { HydrationDAO } from '../dao/hydration.dao';
 import { UserDAO } from '../dao/user.dao';
 
+type logParams = {
+  userId: number,
+  weight: number,
+  source?: string,
+  measured_at?: Date
+};
+
 export const HydrationService = {
-  async logWater(userId: number, weightGrams: number, source: string) {
+  async logWater(logParams: logParams) {
     return await prisma.$transaction(async (tx) => {
       
       const newLog = await HydrationDAO.createHydrationLog({
-        user: { connect: { id: userId } },
-        weight: weightGrams,
-        source: source,
+        user: { connect: { id: logParams.userId } },
+        weight: logParams.weight,
+        source: logParams.source,
+        measured_at: logParams.measured_at
       }, tx);
 
+      // TODO - this logic must be fixed to use proper calculation of volume progress
       await tx.challengeParticipant.updateMany({
-        where: { userID: userId, status: 'active' },
-        data: { progress_ml: { increment: weightGrams } }
+        where: { userID: logParams.userId, status: 'active' },
+        data: { progress_ml: { increment: logParams.weight } }
       });
 
       return newLog;

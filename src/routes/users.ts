@@ -78,7 +78,22 @@ router.post('/:userId/water', authMiddleware, async (req: any, res: any) => {
   } catch (error) {
     res.status(500).json({ message: `Server error: ${error}` });
   }
+});
 
+// Get hydration logs for a user (with authentication)
+router.get('/:userId/water', authMiddleware, async (req: any, res: any) => {
+  try {
+    const userIdFromUrl = parseInt(req.params.userId);
+    // const authenticatedUserId = req.user.sub;
+    // if (isNaN(userIdFromUrl) || userIdFromUrl !== authenticatedUserId) {
+    //   return res.status(403).json({ message: 'You can not view history for another user' });
+    // }
+
+    const history = await HydrationDAO.getHistoryByUserId(userIdFromUrl);
+    res.json(history);
+  } catch (error) {
+    res.status(500).json({ message: `Server error: ${error}` });
+  }
 });
 
 // get fake recommendations for a user (this is just a placeholder)

@@ -13,7 +13,7 @@ export const HydrationDAO = {
     getHistoryByUserId: async (userId: number) => {
         return await prisma.hydrationLog.findMany({
         where: { userID: userId },
-        orderBy: { measured_at: 'desc' }
+        orderBy: { id: 'desc' }
         });
     },
 

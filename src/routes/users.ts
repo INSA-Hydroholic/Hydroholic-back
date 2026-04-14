@@ -8,6 +8,30 @@ const router = Router();
 import { prisma } from '../lib/prisma';
 import { HydrationService } from '../service/hydration.service';
 
+const parseMeasuredAt = (input: unknown): Date => {
+  if (input === undefined || input === null || input === '') {
+    return new Date();
+  }
+
+  if (typeof input === 'number' || typeof input === 'string') {
+    const numeric = typeof input === 'number' ? input : Number(input);
+    if (Number.isFinite(numeric) && numeric > 0) {
+      const timestampMs = numeric < 1_000_000_000_000 ? numeric * 1000 : numeric;
+      const parsedFromUnix = new Date(timestampMs);
+      if (!Number.isNaN(parsedFromUnix.getTime())) {
+        return parsedFromUnix;
+      }
+    }
+  }
+
+  const parsed = new Date(input as string);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error('Invalid measured_at timestamp');
+  }
+
+  return parsed;
+};
+
 // get all users
 router.get('/', async (req, res) => {
   try {
@@ -73,11 +97,13 @@ router.post('/:userId/water', authMiddleware, async (req: any, res: any) => {
       console.warn(`Invalid weight value from user ${authenticatedUserId}: ${weight}`);
       return res.status(400).json({ message: `Weight must be a positive number. Received: ${weight}` });
     }
+    const parsedMeasuredAt = parseMeasuredAt(measured_at);
+
     const newLog = await HydrationService.logWater({
       userId: userIdFromUrl,
       weight,
       source: source || 'app',
-      measured_at: measured_at ? new Date(measured_at) : new Date()
+      measured_at: parsedMeasuredAt
     });
     console.log(`New hydration log for user ${userIdFromUrl}: ${weight}g from source ${source} at ${measured_at}`);
     res.json({ message: 'Log ajoutée avec succès', data: newLog });

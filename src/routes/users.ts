@@ -78,7 +78,17 @@ router.post('/:userId/water', authMiddleware, async (req: any, res: any) => {
   } catch (error) {
     res.status(500).json({ message: `Server error: ${error}` });
   }
+});
 
+// Get hydration logs for a user
+router.get('/:userId/water', async (req: any, res: any) => {
+  try {
+    const userIdFromUrl = parseInt(req.params.userId);
+    const history = await HydrationDAO.getHistoryByUserId(userIdFromUrl);
+    res.json(history);
+  } catch (error) {
+    res.status(500).json({ message: `Server error: ${error}` });
+  }
 });
 
 // get fake recommendations for a user (this is just a placeholder)

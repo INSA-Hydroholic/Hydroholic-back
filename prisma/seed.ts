@@ -45,6 +45,24 @@ async function main() {
   const users = await prisma.user.createManyAndReturn({
     data: [
       {
+        email: 'admin@hydroholic.local',
+        password_hash: passwordHash,
+        nom: 'admin',
+        prenom: 'admin',
+        username: 'admin',
+        phone: '+33600000001',
+        age: 24,
+        sex: 'androgynous',
+        weight: 99.9,
+        height: 199,
+        region: 'Nowhere',
+        avatar_url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=admin',
+        num_intense_activities: 2,
+        num_moderate_activities: 4,
+        biography: 'I like administrating.',
+        daily_goal: 4000,
+      },
+      {
         email: 'alice@hydroholic.local',
         password_hash: passwordHash,
         nom: 'Martin',

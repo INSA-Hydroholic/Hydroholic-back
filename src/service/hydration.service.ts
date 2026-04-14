@@ -6,7 +6,7 @@ type logParams = {
   userId: number,
   weight: number,
   source?: string,
-  measured_at?: Date
+  measured_at?: string
 };
 
 export const HydrationService = {

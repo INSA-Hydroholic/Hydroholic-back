@@ -64,8 +64,9 @@ export const HydrationDAO = {
             if (delta > 0) { continue; }  // Weight decreases when water is consumed, so we only consider negative deltas. Positive deltas are likely due to noise or refills.
             const timeDelta = (weights[i].measured_at.getTime() - weights[i - 1].measured_at.getTime()) / 60000; // time difference in minutes
             const rate = delta / timeDelta;
-            if (rate > minRateDelta) {
-                totalVolume += delta;
+            if (rate < minRateDelta) {
+                console.log(`You drank water at ${weights[i].measured_at.toISOString()} with a rate of ${rate.toFixed(2)} g/min. \n\tTime delta: ${timeDelta.toFixed(2)} min, weight delta: ${delta} g`);
+                totalVolume -= delta;
             }
         }
         return totalVolume;

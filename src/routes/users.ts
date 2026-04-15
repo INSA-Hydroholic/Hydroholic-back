@@ -89,12 +89,27 @@ router.post('/:userId/water', authMiddleware, async (req: any, res: any) => {
   }
 });
 
-// Get hydration logs for a user
+// Get weight logs for a user - TODO : rename to weight-related name
 router.get('/:userId/water', async (req: any, res: any) => {
   try {
     const userIdFromUrl = parseInt(req.params.userId);
     const history = await HydrationDAO.getHistoryByUserId(userIdFromUrl);
     res.json(history);
+  } catch (error) {
+    res.status(500).json({ message: `Server error: ${error}` });
+  }
+});
+
+// Retrieve water consumption between two dates for a user based on weight logs
+router.get('/:userId/consumption', async (req: any, res: any) => {
+  try {
+    const userIdFromUrl = parseInt(req.params.userId);
+    const { startDate, endDate } = req.query;
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: 'No startDate or endDate provided.' });
+    }
+    const consumption = await HydrationDAO.getTotalConsumedByRange(userIdFromUrl, new Date(startDate), new Date(endDate));
+    res.json({ totalVolume: consumption });
   } catch (error) {
     res.status(500).json({ message: `Server error: ${error}` });
   }

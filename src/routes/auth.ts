@@ -6,6 +6,7 @@ import { authMiddleware, AuthRequest } from '../middlewares/auth.middleware';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'change-me-secret';
+console.log(`Using JWT secret: ${JWT_SECRET}`);
 const JWT_EXPIRES_IN = '7d';
 
 // little helper to create JWT token

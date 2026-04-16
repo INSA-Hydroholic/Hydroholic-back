@@ -67,7 +67,7 @@ export const HydrationDAO = {
             const timeDelta = (weights[i].measured_at.getTime() - weights[i - 1].measured_at.getTime()) / 60000; // time difference in minutes
             const rate = delta / timeDelta;
             if (minRateDelta < rate && rate < maxRateDelta) {
-                totalVolume -= delta;
+                totalVolume += delta;
             }
         }
         return totalVolume;

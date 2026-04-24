@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { UserDAO } from '../dao/user.dao';
 import { HydrationDAO } from '../dao/hydration.dao';
 import { authMiddleware } from '../middlewares/auth.middleware';

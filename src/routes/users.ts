@@ -125,4 +125,38 @@ router.get('/:userId/recommendations', (req, res) => {
   res.json(recommendations);
 });
 
+router.post('/:userId/goal/calculate', authMiddleware, async (req: any, res: any) => {
+  try {
+    const userId = parseInt(req.params.userId);
+    const { weight, age, gender, intenseMin, moderateMin, isHot } = req.body;
+
+    // Validation rapide des données reçues
+    if (!weight || !age || !gender) {
+      return res.status(400).json({ message: "Données manquantes (poids, âge ou sexe)" });
+    }
+
+    // 1. Calculer le nouvel objectif avec la formule
+    const recommendedGoal = HydrationService.calculatePersonalizedGoal({
+      weight,
+      age,
+      gender,
+      intenseMin: intenseMin || 0,
+      moderateMin: moderateMin || 0,
+      isHot: isHot || false
+    });
+
+    // 2. Mettre à jour l'utilisateur dans la base de données
+    const updatedUser = await UserDAO.updateDailyGoal(userId, recommendedGoal);
+
+    res.json({
+      message: "Objectif personnalisé mis à jour avec succès",
+      daily_goal: updatedUser.daily_goal
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Erreur lors du calcul de l'objectif" });
+  }
+});
+
 export default router;

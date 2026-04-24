@@ -125,4 +125,59 @@ router.get('/:userId/recommendations', (req, res) => {
   res.json(recommendations);
 });
 
+router.put('/profile', authMiddleware, async (req: any, res: any) => {
+  try {
+    const userId = req.user.id;
+    const updates = req.body;
+
+    // 1. validate input data
+    const validData: any = {};
+    
+    if (updates.nom) validData.nom = updates.nom;
+    if (updates.prenom) validData.prenom = updates.prenom;
+    if (updates.biography !== undefined) validData.biography = updates.biography;
+    
+    if (updates.age !== undefined) {
+      if (updates.age < 0 || updates.age > 120) return res.status(400).json({ message: "Invalid age" });
+      validData.age = updates.age;
+    }
+    
+    if (updates.daily_goal !== undefined) {
+      if (updates.daily_goal <= 0) return res.status(400).json({ message: "Daily goal must be positive" });
+      validData.daily_goal = updates.daily_goal;
+    }
+
+    if (updates.weight !== undefined) {
+      if (updates.weight <= 0) return res.status(400).json({ message: "Invalid weight" });
+      validData.weight = updates.weight;
+    }
+
+    // 2. update user profile
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: validData,
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        nom: true,
+        prenom: true,
+        age: true,
+        weight: true,
+        daily_goal: true,
+        avatar_url: true
+      }
+    });
+
+    res.json({
+      message: "Profile updated successfully",
+      user: updatedUser
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 export default router;

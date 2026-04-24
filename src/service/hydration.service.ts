@@ -60,7 +60,7 @@ export const HydrationService = {
       }
     }
 
-    // 2. Store new record and initiate transaction to update challenge progress
+    // 2. Store new record and initiate transaction to update challenge progress (even if audit fails, we still want to log the event)
     return await prisma.$transaction(async (tx) => {
       const newLog = await HydrationDAO.createHydrationLog({
         user: { connect: { id: userId } },

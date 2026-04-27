@@ -9,8 +9,8 @@ async function testRecommendation() {
         weight: 61,
         age: 21,
         gender: 'F' as 'H' | 'F',
-        intenseMin: 180,   // 1h de sport intense
-        moderateMin: 180,  // 30 min de marche
+        intenseMin: 180,   
+        moderateMin: 180,  
     };
 
     console.log(`📍 Ville : ${mockUser.city}`);

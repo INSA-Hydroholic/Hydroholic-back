@@ -100,8 +100,8 @@ export const HydrationService = {
       }
     }
 
-    const intenseBonus = (intenseMin / 60) * 600;
-    const moderateBonus = (moderateMin / 60) * 400;
+    const intenseBonus = ((intenseMin / 7) / 60) * 600;
+    const moderateBonus = ((moderateMin / 7) / 60) * 400;
     let envBonus = 0;
     if (temp >= 30) {
       envBonus = 1000;

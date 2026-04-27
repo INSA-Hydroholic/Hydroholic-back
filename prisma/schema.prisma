@@ -30,6 +30,14 @@ model User {
   num_moderate_activities Int            @default(0)
   biography               String?        @db.Text
   daily_goal              Int            @default(2000) // Unité en ml
+
+  // --- NOUVEAUTÉS EHPAD / MONITORING ---
+  role                    String   @default("USER") // 'USER' (étudiant, individu), 'STAFF' (infirmier), 'RESIDENT' (personne âgée), 'FAMILY' (aidant privé)
+  gourde_id               String?  @unique          // Association ID unique de la gourde
+  
+  // Pour les résidents d'EHPAD (Un résident appartient à une seule organisation)
+  organizationId          Int?
+  organization            Organization? @relation(fields: [organizationId], references: [id])
   
   created_at              DateTime       @default(now())
   updated_at              DateTime       @updatedAt // Règle transversale 10
@@ -44,9 +52,39 @@ model User {
   receivedRequests        Relationship[] @relation("Receiver")
   
   goals                   Goal[]
+
+  // NOUVELLES RELATIONS
+  staffAssignments        StaffAssignment[] // Pour les infirmiers travaillant dans plusieurs EHPAD
+  alerts                  AlertLog[]        // Alertes générées pour cet utilisateur
 }
 
-// 2. Table Relationship (Amis) - Adaptée au point 5 du contrat
+// ---------------------------------------------------------
+// 2. ORGANISATIONS (EHPAD ou Famille)
+// ---------------------------------------------------------
+model Organization {
+  id         Int      @id @default(autoincrement())
+  name       String
+  type       String   // 'EHPAD' ou 'PRIVATE' (pour les particuliers)
+  created_at DateTime @default(now())
+
+  // Relations
+  members    StaffAssignment[] // Les infirmiers/aidants rattachés
+  residents  User[]            // Les résidents/parents rattachés
+}
+
+// Table de jointure : Un infirmier peut travailler dans plusieurs EHPAD
+model StaffAssignment {
+  userId         Int
+  organizationId Int
+  role           String       @default("NURSE") // 'ADMIN_ORG', 'NURSE', 'FAMILY_MEMBER'
+  
+  user           User         @relation(fields: [userId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@id([userId, organizationId])
+}
+
+// 3. Table Relationship (Amis) - Adaptée au point 5 du contrat
 model Relationship {
   requesterID Int     
   receiverID  Int    
@@ -60,7 +98,7 @@ model Relationship {
   @@id([requesterID, receiverID]) 
 }
 
-// 3. Table HydrationLog - Adaptée au point 4 du contrat
+// 4. Table HydrationLog - Adaptée au point 4 du contrat
 model HydrationLog {
   id            Int      @id @default(autoincrement()) // ID unique recommandé pour éviter les collisions
   userID        Int    
@@ -73,7 +111,7 @@ model HydrationLog {
   user          User     @relation(fields: [userID], references: [id])
 }
 
-// 4. Table Challenge - Adaptée au point 6 du contrat
+// 5. Table Challenge - Adaptée au point 6 du contrat
 model Challenge {
   id             Int          @id @default(autoincrement()) 
   creator_id     Int          
@@ -92,7 +130,7 @@ model Challenge {
   participants   ChallengeParticipant[]
 }
 
-// 5. Table Challenge Participants
+// 6. Table Challenge Participants
 model ChallengeParticipant {
   id           Int       @id @default(autoincrement()) 
   challengeID  Int      
@@ -105,7 +143,7 @@ model ChallengeParticipant {
   user         User      @relation(fields: [userID], references: [id])
 }
 
-// 6. Table Goal - Adaptée au point 8
+// 7. Table Goal - Adaptée au point 8
 model Goal {
   id           Int      @id @default(autoincrement()) 
   userID       Int 
@@ -119,10 +157,24 @@ model Goal {
   goalType     GoalType @relation(fields: [goal_type_id], references: [id])
 }
 
-// 7. Table GoalType 
+// 8. Table GoalType 
 model GoalType {
   id           Int      @id @default(autoincrement()) 
   unite        String   // 'ml'
   duree        String   // 'daily', 'weekly'
   goals        Goal[]
+}
+
+// ---------------------------------------------------------
+// 9. ALERTES (Pour le Dashboard EHPAD)
+// ---------------------------------------------------------
+model AlertLog {
+  id          Int      @id @default(autoincrement())
+  userId      Int      // L'utilisateur (résident) concerné
+  message     String
+  severity    String   // 'RED' (danger), 'YELLOW' (attention)
+  isResolved  Boolean  @default(false)
+  created_at  DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id])
 }

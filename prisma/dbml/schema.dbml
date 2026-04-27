@@ -14,12 +14,16 @@ Table User {
   sex String
   weight Float
   height Float
-  region String
+  city String
   avatar_url String
   num_intense_activities Int [not null, default: 0]
   num_moderate_activities Int [not null, default: 0]
   biography String
   daily_goal Int [not null, default: 2000]
+  role String [not null, default: 'USER']
+  gourde_id String [unique]
+  organizationId Int
+  organization Organization
   created_at DateTime [default: `now()`, not null]
   updated_at DateTime [not null]
   hydrationLogs HydrationLog [not null]
@@ -28,6 +32,29 @@ Table User {
   sentRequests Relationship [not null]
   receivedRequests Relationship [not null]
   goals Goal [not null]
+  staffAssignments StaffAssignment [not null]
+  alerts AlertLog [not null]
+}
+
+Table Organization {
+  id Int [pk, increment]
+  name String [not null]
+  type String [not null]
+  created_at DateTime [default: `now()`, not null]
+  members StaffAssignment [not null]
+  residents User [not null]
+}
+
+Table StaffAssignment {
+  userId Int [not null]
+  organizationId Int [not null]
+  role String [not null, default: 'NURSE']
+  user User [not null]
+  organization Organization [not null]
+
+  indexes {
+    (userId, organizationId) [pk]
+  }
 }
 
 Table Relationship {
@@ -100,6 +127,22 @@ Table GoalType {
   goals Goal [not null]
 }
 
+Table AlertLog {
+  id Int [pk, increment]
+  userId Int [not null]
+  message String [not null]
+  severity String [not null]
+  isResolved Boolean [not null, default: false]
+  created_at DateTime [default: `now()`, not null]
+  user User [not null]
+}
+
+Ref: User.organizationId > Organization.id
+
+Ref: StaffAssignment.userId > User.id
+
+Ref: StaffAssignment.organizationId > Organization.id
+
 Ref: Relationship.requesterID > User.id
 
 Ref: Relationship.receiverID > User.id
@@ -115,3 +158,5 @@ Ref: ChallengeParticipant.userID > User.id
 Ref: Goal.userID > User.id
 
 Ref: Goal.goal_type_id > GoalType.id
+
+Ref: AlertLog.userId > User.id

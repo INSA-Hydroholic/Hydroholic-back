@@ -1,6 +1,7 @@
 {
   "name": "hydroholic-backend",
   "version": "1.0.0",
+  "type": "module",
   "description": "Hydroholic API with PostgreSQL and Prisma",
   "main": "src/index.ts",
   "scripts": {
@@ -9,7 +10,6 @@
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.7.0",
-    "@prisma/client": "^7.7.0",
     "axios": "^1.15.2",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
@@ -19,11 +19,13 @@
     "pg": "^8.20.0"
   },
   "devDependencies": {
+    "@prisma/client": "^7.8.0",
     "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
-    "prisma": "^7.0.0",
+    "prisma": "^7.8.0",
+    "prisma-dbml-generator": "^0.12.0",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2"

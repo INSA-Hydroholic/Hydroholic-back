@@ -6,6 +6,7 @@ import pandas as pd
 from datetime import datetime
 from scipy.optimize import minimize
 from scipy.interpolate import interp1d
+from sklearn.model_selection import KFold
 
 app = FastAPI(title="Hydroholic ML Service - Matrix Cumulative Ridge")
 
@@ -53,7 +54,7 @@ def create_cumulative_curve(logs_df: pd.DataFrame, target_hours: np.ndarray) -> 
 from scipy.optimize import minimize
 
 # ==========================================
-# 3. 核心优化器：带严格数学不等式约束的 SLSQP
+# 3. 核心优化器
 # ==========================================
 def optimize_matrix_ridge(X_train, Y_train, x_today, target_b, alpha=1.0, gamma=50.0):
     N_days, F_hours = Y_train.shape
@@ -64,8 +65,6 @@ def optimize_matrix_ridge(X_train, Y_train, x_today, target_b, alpha=1.0, gamma=
     H_plus_1 = H_features + 1
     
     w_init = np.zeros(H_plus_1 * F_hours)
-    
-    # 【纯净的损失函数】：只保留拟合、正则和 Nudge，去掉一切工程惩罚代码
     def loss_function(w_flat):
         W = w_flat.reshape(H_plus_1, F_hours)
         
@@ -76,7 +75,8 @@ def optimize_matrix_ridge(X_train, Y_train, x_today, target_b, alpha=1.0, gamma=
         
         y_today_pred = x_today_bias.dot(W)
         end_of_day_pred = y_today_pred[-1]
-        nudge_loss = gamma * ((end_of_day_pred - target_b) ** 2)
+        raw_diff_sq = (end_of_day_pred - target_b) ** 2
+        nudge_loss = gamma * np.log1p(raw_diff_sq)
         
         return mse_loss + l2_loss + nudge_loss
 
@@ -91,8 +91,6 @@ def optimize_matrix_ridge(X_train, Y_train, x_today, target_b, alpha=1.0, gamma=
     
     # 配置 SLSQP 的约束条件，'ineq' 代表不等式 (>= 0)
     constraints = [{'type': 'ineq', 'fun': monotonicity_constraint}]
-
-    # 切换求解器为 SLSQP
     res = minimize(
         loss_function, 
         w_init, 
@@ -104,6 +102,54 @@ def optimize_matrix_ridge(X_train, Y_train, x_today, target_b, alpha=1.0, gamma=
 
     future_curve = x_today_bias.dot(W_opt)
     return future_curve
+
+def find_best_alpha_cv_matrix(X_train, Y_train, alphas=[0.1, 1.0, 5.0, 10.0, 50.0], n_splits=3):
+    N_days, F_hours = Y_train.shape
+    # 如果历史天数比折数还少，没法做CV，直接返回一个保守的较大Alpha防过拟合
+    if N_days < n_splits:
+        return 5.0 
+
+    kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
+    best_alpha = 1.0
+    best_score = float('inf')
+    H_features = X_train.shape[1]
+    H_plus_1 = H_features + 1
+
+    for alpha in alphas:
+        fold_scores = []
+        for train_index, val_index in kf.split(X_train):
+            X_fold_train, X_fold_val = X_train[train_index], X_train[val_index]
+            Y_fold_train, Y_fold_val = Y_train[train_index], Y_train[val_index]
+            
+            # 偏置项 (Bias)
+            X_train_bias = np.hstack([np.ones((len(X_fold_train), 1)), X_fold_train])
+            X_val_bias = np.hstack([np.ones((len(X_fold_val), 1)), X_fold_val])
+            
+            w_init = np.zeros(H_plus_1 * F_hours)
+            
+            # CV 阶段的 Loss 极其纯净，只评估历史泛化能力
+            def cv_loss(w_flat):
+                W = w_flat.reshape(H_plus_1, F_hours)
+                Y_pred = X_train_bias.dot(W)
+                mse = np.mean((Y_pred - Y_fold_train) ** 2)
+                l2 = alpha * np.sum(W ** 2)
+                return mse + l2
+            
+            # 因为这里没有不等式约束，用 L-BFGS-B 跑得飞快
+            res = minimize(cv_loss, w_init, method='L-BFGS-B') 
+            W_fold = res.x.reshape(H_plus_1, F_hours)
+            
+            # 在验证集上计算纯粹的预测误差
+            val_preds = X_val_bias.dot(W_fold)
+            val_mse = np.mean((val_preds - Y_fold_val) ** 2)
+            fold_scores.append(val_mse)
+            
+        avg_score = np.mean(fold_scores)
+        if avg_score < best_score:
+            best_score = avg_score
+            best_alpha = alpha
+            
+    return best_alpha
 
 # ==========================================
 # 4. 主 API 路由
@@ -151,13 +197,18 @@ def predict_hydration(request: PredictionRequest):
         x_today = create_cumulative_curve(today_logs, target_hours=past_hours)
         current_intake = x_today[-1]
 
+        optimal_alpha = 1.0
+        if len(Y_train) >= 3: # 至少有3天历史数据才跑 K折
+            optimal_alpha = find_best_alpha_cv_matrix(X_train, Y_train)
+            print(f"[{today_date}] Auto-tuned Alpha: {optimal_alpha}")
+
         # D. 核心回归计算
         # 第一次学习：自然预测 a (关闭Nudge, gamma=0)
-        future_natural = optimize_matrix_ridge(X_train, Y_train, x_today, target_b, alpha=1.0, gamma=0.0)
+        future_natural = optimize_matrix_ridge(X_train, Y_train, x_today, target_b, alpha=optimal_alpha, gamma=0.0)
         predicted_a = future_natural[-1]
 
         # 第二次学习：生成向 b 引导的平滑曲线 (开启Nudge, gamma=50)
-        future_nudge = optimize_matrix_ridge(X_train, Y_train, x_today, target_b, alpha=1.0, gamma=50.0)
+        future_nudge = optimize_matrix_ridge(X_train, Y_train, x_today, target_b, alpha=optimal_alpha, gamma=50.0)
 
         # E. 组装输出结构
         nudge_curve = []

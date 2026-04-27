@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { HydrationDAO } from '../dao/hydration.dao';
 import { UserDAO } from '../dao/user.dao';
+import axios from 'axios';
 
 type logParams = {
   userId: number,
@@ -60,12 +61,13 @@ export const HydrationService = {
     return history;
   },
 
-  ccalculatePersonalizedGoal: (data: Partial<{
+  calculatePersonalizedGoal: (data: Partial<{
     weight: number,
     age: number,
     gender: 'H' | 'F',
     intenseMin: number,
     moderateMin: number,
+    temp: number,
     isHot: boolean
   }>) => {
     // 1. Si l'objet est vide ou inexistant, on retourne le défaut de 2000ml
@@ -78,7 +80,7 @@ export const HydrationService = {
     const gender = data.gender ?? 'F'; 
     const intenseMin = data.intenseMin ?? 0;
     const moderateMin = data.moderateMin ?? 0;
-    const isHot = data.isHot ?? false;
+    const temp = data.temp ?? 20;
 
     let base = 0;
 
@@ -100,9 +102,30 @@ export const HydrationService = {
 
     const intenseBonus = (intenseMin / 60) * 600;
     const moderateBonus = (moderateMin / 60) * 400;
-    const envBonus = isHot ? 500 : 0;
+    let envBonus = 0;
+    if (temp >= 30) {
+      envBonus = 1000;
+    } else if (temp >= 20) {
+      envBonus = 500;
+    }
 
     return Math.round(base + intenseBonus + moderateBonus + envBonus);
   }
   
+};
+
+export const WeatherService = {
+  getTemperatureByCity: async (city: string): Promise<number> => {
+    const API_KEY = process.env.WEATHER_API_KEY;
+    console.log("Ma clé API est :", API_KEY ? "Chargée" : "Absente");
+    const url = `http://api.weatherapi.com/v1/current.json?key=${API_KEY}&q=${city}&aqi=no`;
+    
+    try {
+      const response = await axios.get(url);
+      return response.data.current.temp_c; // Retourne la température en Celsius
+    } catch (error) {
+      console.error("Erreur météo:", error);
+      return 20; // Valeur par défaut en cas d'erreur
+    }
+  }
 };

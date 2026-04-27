@@ -24,7 +24,7 @@ model User {
   sex                     String?         
   weight                  Float?          
   height                  Float?          
-  region                  String?       
+  city                  String?       
   avatar_url              String?       
   num_intense_activities  Int            @default(0)
   num_moderate_activities Int            @default(0)

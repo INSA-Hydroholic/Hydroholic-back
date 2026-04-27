@@ -181,7 +181,22 @@ router.post('/recommendation', authMiddleware, async (req: AuthRequest, res: any
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { weight: true, age: true, sex: true, num_intense_activities: true }
+      select: { 
+        weight: true, 
+        age: true, 
+        sex: true, 
+        num_intense_activities: true, 
+        num_moderate_activities: true 
+      }
+    });
+
+    const calculatedTarget = HydrationService.calculatePersonalizedGoal({
+      weight: user?.weight || 0,
+      age: user?.age || 30,
+      gender: user?.sex === 'male' ? 'H' : 'F',
+      intenseMin: user?.num_intense_activities || 0,
+      moderateMin: user?.num_moderate_activities || 0,
+      temp: 20 
     });
 
     const hydrationLogs = await prisma.hydrationLog.findMany({
@@ -193,28 +208,17 @@ router.post('/recommendation', authMiddleware, async (req: AuthRequest, res: any
     });
 
     const pythonResponse = await axios.post('http://localhost:5000/predict', {
-      features: {
-        weight: user?.weight,
-        age: user?.age,
-        activities: user?.num_intense_activities
-      },
+      target_b: calculatedTarget,
       logs: hydrationLogs.map(log => ({
         time: log.measured_at,
         amount: log.weight
       }))
     });
 
-    const { predicted_a, nudge_curve, recommended_goal_b } = pythonResponse.data;
-
-    res.json({
-      prediction: predicted_a,
-      target_b: recommended_goal_b,
-      curve: nudge_curve,
-      formula_version: "v1-ridge-svd"
-    });
+    res.json(pythonResponse.data);
 
   } catch (error) {
-    console.error("ML Service Error:", error);
-    res.status(500).json({ message: "la recommandation est temporairement indisponible" });
+    console.error("Recommendation Error:", error);
+    res.status(500).json({ message: "无法获取推荐" });
   }
 });

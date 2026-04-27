@@ -23,7 +23,7 @@ class HydrationLog(BaseModel):
     amount: float
 
 class PredictionRequest(BaseModel):
-    features: UserFeatures
+    target_b: float
     logs: List[HydrationLog]
 
 # ==========================================
@@ -159,8 +159,7 @@ def find_best_alpha_cv_matrix(X_train, Y_train, alphas=[0.1, 1.0, 5.0, 10.0, 50.
 def predict_hydration(request: PredictionRequest):
     try:
         # A. Basic target calculation
-        target_b = (request.features.weight * 35) + (request.features.activities * 200)
-
+        target_b = request.target_b
         now = datetime.utcnow()
         today_date = now.date()
         current_hour = now.hour

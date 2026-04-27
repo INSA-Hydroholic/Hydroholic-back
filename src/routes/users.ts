@@ -1,7 +1,9 @@
 import { Router } from 'express';
+import axios from 'axios';
 import { UserDAO } from '../dao/user.dao';
 import { HydrationDAO } from '../dao/hydration.dao';
-import { authMiddleware } from '../middlewares/auth.middleware';
+import { authMiddleware, AuthRequest } from '../middlewares/auth.middleware';
+
 
 const router = Router();
 import { prisma } from '../lib/prisma';
@@ -114,16 +116,7 @@ router.get('/:userId/consumption', async (req: any, res: any) => {
   }
 });
 
-// get fake recommendations for a user (this is just a placeholder)
-router.get('/:userId/recommendations', (req, res) => {
-  const recommendations = [
-    { id: 'r1', title: 'Bois plus tôt', description: 'Commence ta journée avec un verre d eau.' },
-    { id: 'r2', title: 'Fixe des rappels', description: 'Programmes 3 rappels pour boire toutes les 2 h.' },
-    { id: 'r3', title: 'Varie tes boissons', description: 'Ajoute citron, menthe ou thé vert à ton eau.' }
-  ];
-  res.json(recommendations);
-});
-
+// Update user profile
 router.put('/profile', authMiddleware, async (req: any, res: any) => {
   try {
     const userId = req.user.id;
@@ -180,3 +173,48 @@ router.put('/profile', authMiddleware, async (req: any, res: any) => {
 });
 
 export default router;
+
+//recommandation:
+router.post('/recommendation', authMiddleware, async (req: AuthRequest, res: any) => {
+  try {
+    const userId = req.user!.sub;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { weight: true, age: true, sex: true, num_intense_activities: true }
+    });
+
+    const hydrationLogs = await prisma.hydrationLog.findMany({
+      where: {
+        userID: userId,
+        measured_at: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+      },
+      orderBy: { measured_at: 'asc' }
+    });
+
+    const pythonResponse = await axios.post('http://localhost:5000/predict', {
+      features: {
+        weight: user?.weight,
+        age: user?.age,
+        activities: user?.num_intense_activities
+      },
+      logs: hydrationLogs.map(log => ({
+        time: log.measured_at,
+        amount: log.weight
+      }))
+    });
+
+    const { predicted_a, nudge_curve, recommended_goal_b } = pythonResponse.data;
+
+    res.json({
+      prediction: predicted_a,
+      target_b: recommended_goal_b,
+      curve: nudge_curve,
+      formula_version: "v1-ridge-svd"
+    });
+
+  } catch (error) {
+    console.error("ML Service Error:", error);
+    res.status(500).json({ message: "la recommandation est temporairement indisponible" });
+  }
+});

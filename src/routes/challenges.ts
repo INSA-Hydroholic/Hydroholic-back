@@ -1,12 +1,14 @@
+import { Response } from 'express';
 import { Router } from 'express';
 import { ChallengeDAO } from '../dao/challenge.dao';
 import { ChallengeParticipantDAO } from '../dao/participant.dao';
+import { prisma } from '../lib/prisma';
+import { authMiddleware, AuthRequest } from '../middlewares/auth.middleware';
 
 const router = Router();
-import { prisma } from '../lib/prisma';
 
-// get all challenges
-router.get('/', async (req, res) => {
+router.use(authMiddleware);
+router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const challenges = await prisma.challenge.findMany({
       include: { participants: true }
@@ -17,8 +19,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// get challenge by id
-router.get('/:challengeId', async (req, res) => {
+router.get('/:challengeId', async (req: AuthRequest, res: Response) => {
   try {
     const challengeId = parseInt(req.params.challengeId);
     const challenge = await prisma.challenge.findUnique({
@@ -33,10 +34,11 @@ router.get('/:challengeId', async (req, res) => {
   }
 });
 
-// create a new challenge
-router.post('/', async (req, res) => {
+router.post('/', async (req: AuthRequest, res: Response) => {
   try {
-    const { name, type, objective, duration, creatorId, description } = req.body;
+    const { name, type, objective, description } = req.body;
+    
+    const creatorId = req.user!.sub; 
     
     const newChallenge = await ChallengeDAO.createChallenge({
       title: name,
@@ -46,22 +48,21 @@ router.post('/', async (req, res) => {
       objective_ml: parseInt(objective) || 0,
       start_date: new Date(),
       end_date: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000),
-      creator: { connect: { id: parseInt(creatorId) } }
+      creator: { connect: { id: creatorId } }
     });
 
     res.status(201).json(newChallenge);
   } catch (error) {
-    res.status(500).json({ message: 'Erreur de création', error });
+    console.error(error);
+    res.status(500).json({ message: 'Erreur de création' });
   }
 });
 
-// join a challenge
-router.post('/:challengeId/join', async (req, res) => {
+router.post('/:challengeId/join', async (req: AuthRequest, res: Response) => {
   try {
     const challengeId = parseInt(req.params.challengeId);
-    const userId = parseInt(req.body.userId);
 
-    if (!userId) return res.status(400).json({ message: 'userId requis' });
+    const userId = req.user!.sub;
 
     const participation = await ChallengeParticipantDAO.createParticipant({
       challenge: { connect: { id: challengeId } },

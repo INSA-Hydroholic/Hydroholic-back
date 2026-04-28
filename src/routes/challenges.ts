@@ -61,8 +61,18 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 router.post('/:challengeId/join', async (req: AuthRequest, res: Response) => {
   try {
     const challengeId = parseInt(req.params.challengeId);
-
     const userId = req.user!.sub;
+
+    const existing = await prisma.challengeParticipant.findFirst({
+      where: { 
+        challengeID: challengeId,  // ← nombre real en tu DB
+        userID: userId              // ← nombre real en tu DB
+      }
+    });
+
+    if (existing) {
+      return res.status(409).json({ message: 'Tu participes déjà à ce défi.' });
+    }
 
     const participation = await ChallengeParticipantDAO.createParticipant({
       challenge: { connect: { id: challengeId } },

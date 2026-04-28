@@ -1,6 +1,8 @@
 import { prisma } from '../lib/prisma';
 import { HydrationDAO } from '../dao/hydration.dao';
 import { UserDAO } from '../dao/user.dao';
+import axios from 'axios';
+
 type logParams = {
   userId: number,
   weight: number,
@@ -111,6 +113,7 @@ export const HydrationService = {
 
     return history;
   },
+
   calculatePersonalizedGoal: (data: Partial<{
     weight: number,
     age: number,
@@ -160,5 +163,22 @@ export const HydrationService = {
     }
 
     return Math.round(base + intenseBonus + moderateBonus + envBonus);
+  }
+  
+};
+
+export const WeatherService = {
+  getTemperatureByCity: async (city: string): Promise<number> => {
+    const API_KEY = process.env.WEATHER_API_KEY;
+    console.log("Ma clé API est :", API_KEY ? "Chargée" : "Absente");
+    const url = `http://api.weatherapi.com/v1/current.json?key=${API_KEY}&q=${city}&aqi=no`;
+    
+    try {
+      const response = await axios.get(url);
+      return response.data.current.temp_c; // Retourne la température en Celsius
+    } catch (error) {
+      console.error("Erreur météo:", error);
+      return 20; // Valeur par défaut en cas d'erreur
+    }
   }
 };

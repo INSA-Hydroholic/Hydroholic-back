@@ -17,7 +17,7 @@ const createToken = (userId: number, username: string): string => {
 // 1. register
 router.post('/register', async (req, res) => {
   try {
-    const { username, email, password, fullname } = req.body;
+    const { username, email, password, nom, prenom, ville, poids, age, sexe, telephone, activiteIntense, activiteModeree} = req.body;
     if (!username || !email || !password) {
       return res.status(400).json({ message: 'username, email et password sont requis' });
     }
@@ -35,8 +35,15 @@ router.post('/register', async (req, res) => {
       username,
       email,
       password_hash: passwordHash,
-      nom: fullname || 'Utilisateur',
-      prenom: '',
+      nom: nom,
+      prenom: prenom,
+      city: ville,             // Mapping : front 'ville' -> back 'city'
+      weight: parseFloat(poids), // Conversion en nombre
+      age: parseInt(age),        // Conversion en nombre
+      sex: sexe,               // Mapping : front 'sexe' -> back 'sex'
+      phone: telephone,
+      num_intense_activities : parseInt(activiteIntense) || 0, // Conversion en nombre  
+      num_moderate_activities : parseInt(activiteModeree) || 0 // Conversion en nombre
     });
 
     const token = createToken(newUser.id, newUser.username);

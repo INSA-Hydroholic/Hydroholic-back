@@ -1,8 +1,9 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
+import axios from 'axios';
 import { UserDAO } from '../dao/user.dao';
 import { HydrationDAO } from '../dao/hydration.dao';
-import { authMiddleware } from '../middlewares/auth.middleware';
+import { authMiddleware, AuthRequest } from '../middlewares/auth.middleware';
+
 
 const router = Router();
 import { prisma } from '../lib/prisma';
@@ -115,14 +116,111 @@ router.get('/:userId/consumption', async (req: any, res: any) => {
   }
 });
 
-// get fake recommendations for a user (this is just a placeholder)
-router.get('/:userId/recommendations', (req, res) => {
-  const recommendations = [
-    { id: 'r1', title: 'Bois plus tôt', description: 'Commence ta journée avec un verre d eau.' },
-    { id: 'r2', title: 'Fixe des rappels', description: 'Programmes 3 rappels pour boire toutes les 2 h.' },
-    { id: 'r3', title: 'Varie tes boissons', description: 'Ajoute citron, menthe ou thé vert à ton eau.' }
-  ];
-  res.json(recommendations);
+// Update user profile
+router.put('/profile', authMiddleware, async (req: any, res: any) => {
+  try {
+    const userId = req.user.id;
+    const updates = req.body;
+
+    // 1. validate input data
+    const validData: any = {};
+    
+    if (updates.nom) validData.nom = updates.nom;
+    if (updates.prenom) validData.prenom = updates.prenom;
+    if (updates.biography !== undefined) validData.biography = updates.biography;
+    
+    if (updates.age !== undefined) {
+      if (updates.age < 0 || updates.age > 120) return res.status(400).json({ message: "Invalid age" });
+      validData.age = updates.age;
+    }
+    
+    if (updates.daily_goal !== undefined) {
+      if (updates.daily_goal <= 0) return res.status(400).json({ message: "Daily goal must be positive" });
+      validData.daily_goal = updates.daily_goal;
+    }
+
+    if (updates.weight !== undefined) {
+      if (updates.weight <= 0) return res.status(400).json({ message: "Invalid weight" });
+      validData.weight = updates.weight;
+    }
+
+    // 2. update user profile
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: validData,
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        nom: true,
+        prenom: true,
+        age: true,
+        weight: true,
+        daily_goal: true,
+        avatar_url: true
+      }
+    });
+
+    res.json({
+      message: "Profile updated successfully",
+      user: updatedUser
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+export default router;
+
+//recommandation:
+router.post('/recommendation', authMiddleware, async (req: AuthRequest, res: any) => {
+  try {
+    const userId = req.user!.sub;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { 
+        weight: true, 
+        age: true, 
+        sex: true, 
+        num_intense_activities: true, 
+        num_moderate_activities: true 
+      }
+    });
+
+    const calculatedTarget = HydrationService.calculatePersonalizedGoal({
+      weight: user?.weight || 0,
+      age: user?.age || 30,
+      gender: user?.sex === 'male' ? 'H' : 'F',
+      intenseMin: user?.num_intense_activities || 0,
+      moderateMin: user?.num_moderate_activities || 0,
+      temp: 20 
+    });
+
+    const hydrationLogs = await prisma.hydrationLog.findMany({
+      where: {
+        userID: userId,
+        measured_at: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+      },
+      orderBy: { measured_at: 'asc' }
+    });
+
+    const pythonResponse = await axios.post('http://localhost:5000/predict', {
+      target_b: calculatedTarget,
+      logs: hydrationLogs.map(log => ({
+        time: log.measured_at,
+        amount: log.weight
+      }))
+    });
+
+    res.json(pythonResponse.data);
+
+  } catch (error) {
+    console.error("Recommendation Error:", error);
+    res.status(500).json({ message: "无法获取推荐" });
+  }
 });
 
 router.post('/:userId/goal/calculate', authMiddleware, async (req: any, res: any) => {

@@ -244,7 +244,7 @@ router.post('/:userId/goal/calculate', authMiddleware, async (req: any, res: any
     });
 
     // 2. Mettre à jour l'utilisateur dans la base de données
-    const updatedUser = await UserDAO.updateUser(userId, { daily_goal: recommendedGoal });
+    const updatedUser = await UserDAO.updateDailyGoal(userId, recommendedGoal);
 
     res.json({
       message: "Objectif personnalisé mis à jour avec succès",
@@ -256,3 +256,5 @@ router.post('/:userId/goal/calculate', authMiddleware, async (req: any, res: any
     res.status(500).json({ message: "Erreur lors du calcul de l'objectif" });
   }
 });
+
+export default router;

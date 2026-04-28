@@ -1,0 +1,162 @@
+//// ------------------------------------------------------
+//// THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+//// ------------------------------------------------------
+
+Table User {
+  id Int [pk, increment]
+  email String [unique, not null]
+  password_hash String [not null]
+  nom String [not null]
+  prenom String [not null]
+  username String [unique, not null]
+  phone String
+  age Int
+  sex String
+  weight Float
+  height Float
+  city String
+  avatar_url String
+  num_intense_activities Int [not null, default: 0]
+  num_moderate_activities Int [not null, default: 0]
+  biography String
+  daily_goal Int [not null, default: 2000]
+  role String [not null, default: 'USER']
+  gourde_id String [unique]
+  organizationId Int
+  organization Organization
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+  hydrationLogs HydrationLog [not null]
+  createdChallenges Challenge [not null]
+  participations ChallengeParticipant [not null]
+  sentRequests Relationship [not null]
+  receivedRequests Relationship [not null]
+  goals Goal [not null]
+  staffAssignments StaffAssignment [not null]
+  alerts AlertLog [not null]
+}
+
+Table Organization {
+  id Int [pk, increment]
+  name String [not null]
+  type String [not null]
+  created_at DateTime [default: `now()`, not null]
+  members StaffAssignment [not null]
+  residents User [not null]
+}
+
+Table StaffAssignment {
+  userId Int [not null]
+  organizationId Int [not null]
+  role String [not null, default: 'NURSE']
+  user User [not null]
+  organization Organization [not null]
+
+  indexes {
+    (userId, organizationId) [pk]
+  }
+}
+
+Table Relationship {
+  requesterID Int [not null]
+  receiverID Int [not null]
+  status String [not null]
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+  requester User [not null]
+  receiver User [not null]
+
+  indexes {
+    (requesterID, receiverID) [pk]
+  }
+}
+
+Table HydrationLog {
+  id Int [pk, increment]
+  userID Int [not null]
+  weight Float [not null]
+  source String [not null, default: 'hydrobase']
+  measured_at DateTime [default: `now()`, not null]
+  submitted_at DateTime [default: `now()`, not null]
+  user User [not null]
+}
+
+Table Challenge {
+  id Int [pk, increment]
+  creator_id Int [not null]
+  title String [not null]
+  description String
+  start_date DateTime [not null]
+  end_date DateTime [not null]
+  status String [not null]
+  challenge_type String [not null]
+  objective_ml Int [not null]
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+  creator User [not null]
+  participants ChallengeParticipant [not null]
+}
+
+Table ChallengeParticipant {
+  id Int [pk, increment]
+  challengeID Int [not null]
+  userID Int [not null]
+  joined_date DateTime [default: `now()`, not null]
+  progress_ml Int [not null, default: 0]
+  status String [not null]
+  challenge Challenge [not null]
+  user User [not null]
+}
+
+Table Goal {
+  id Int [pk, increment]
+  userID Int [not null]
+  goal_type_id Int [not null]
+  value Float [not null]
+  start_date DateTime [not null]
+  end_date DateTime [not null]
+  status String [not null]
+  user User [not null]
+  goalType GoalType [not null]
+}
+
+Table GoalType {
+  id Int [pk, increment]
+  unite String [not null]
+  duree String [not null]
+  goals Goal [not null]
+}
+
+Table AlertLog {
+  id Int [pk, increment]
+  userId Int [not null]
+  message String [not null]
+  severity String [not null]
+  isResolved Boolean [not null, default: false]
+  created_at DateTime [default: `now()`, not null]
+  user User [not null]
+}
+
+Ref: User.organizationId > Organization.id
+
+Ref: StaffAssignment.userId > User.id
+
+Ref: StaffAssignment.organizationId > Organization.id
+
+Ref: Relationship.requesterID > User.id
+
+Ref: Relationship.receiverID > User.id
+
+Ref: HydrationLog.userID > User.id
+
+Ref: Challenge.creator_id > User.id
+
+Ref: ChallengeParticipant.challengeID > Challenge.id
+
+Ref: ChallengeParticipant.userID > User.id
+
+Ref: Goal.userID > User.id
+
+Ref: Goal.goal_type_id > GoalType.id
+
+Ref: AlertLog.userId > User.id

@@ -35,5 +35,12 @@ export const UserDAO = {
         return await prisma.user.delete({
         where: { id: userId }
         });
+    },
+    updateDailyGoal: async (userId: number, newGoal: number) => {
+        return await prisma.user.update({
+        where: { id: userId },
+        data: { daily_goal: Math.round(newGoal) } 
+        });
     }
+
 };

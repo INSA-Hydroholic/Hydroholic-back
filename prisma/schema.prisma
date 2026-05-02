@@ -3,176 +3,187 @@ generator client {
   provider = "prisma-client-js"
 }
 
-generator dbml {
-  provider = "prisma-dbml-generator"
-}
-
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
-// 1. Table Utilisateur
+// ---------------------------------------------------------
+// 1. UTILISATEUR
+// ---------------------------------------------------------
 model User {
-  id                      Int            @id @default(autoincrement()) 
-  email                   String         @unique
-  password_hash           String         
-  nom                     String
-  prenom                  String         
-  username                String         @unique
-  phone                   String?        // Optionnel à l'inscription selon le contrat
-  age                     Int?    
-  sex                     String?         
-  weight                  Float?          
-  height                  Float?          
-  city                  String?       
-  avatar_url              String?       
-  num_intense_activities  Int            @default(0)
-  num_moderate_activities Int            @default(0)
-  biography               String?        @db.Text
-  daily_goal              Int            @default(2000) // Unité en ml
-
-  // --- NOUVEAUTÉS EHPAD / MONITORING ---
-  role                    String   @default("USER") // 'USER' (étudiant, individu), 'STAFF' (infirmier), 'RESIDENT' (personne âgée), 'FAMILY' (aidant privé)
-  gourde_id               String?  @unique          // Association ID unique de la gourde
+  id                      Int           @id @default(autoincrement())
+  email                   String        @unique
+  password_hash           String
+  surname                 String        // Correspond à 'nom'
+  name                    String        // Correspond à 'prenom'
+  username                String        @unique
+  phone                   String?
+  age                     Int?
+  sex                     String?
+  weight                  Float?
+  height                  Float?
+  city                    String?
+  avatar_url              String?
+  num_intense_activities  Int           @default(0)
+  num_moderate_activities Int           @default(0)
+  biography               String?       @db.Text
+  daily_goal              Int           @default(2000)
+  role                    String        @default("USER")
   
-  // Pour les résidents d'EHPAD (Un résident appartient à une seule organisation)
+  // Relation 1-1 avec Device (ESP32)
+  esp32                   Device?       @relation(fields: [esp32Id], references: [id])
+  esp32Id                 Int?          @unique
+
+  // Relation avec Organisation
   organizationId          Int?
   organization            Organization? @relation(fields: [organizationId], references: [id])
-  
-  created_at              DateTime       @default(now())
-  updated_at              DateTime       @updatedAt // Règle transversale 10
 
-  // Relations
+  created_at              DateTime      @default(now())
+  updated_at              DateTime      @updatedAt
+
+  // Relations inverses
   hydrationLogs           HydrationLog[]
-  createdChallenges       Challenge[]    @relation("Creator")
+  createdChallenges       Challenge[]   @relation("Creator")
   participations          ChallengeParticipant[]
-  
-  // Relations d'amitié (Refonte selon le point 5)
   sentRequests            Relationship[] @relation("Requester")
   receivedRequests        Relationship[] @relation("Receiver")
-  
   goals                   Goal[]
-
-  // NOUVELLES RELATIONS
-  staffAssignments        StaffAssignment[] // Pour les infirmiers travaillant dans plusieurs EHPAD
-  alerts                  AlertLog[]        // Alertes générées pour cet utilisateur
+  alerts                  AlertLog[]
 }
 
 // ---------------------------------------------------------
-// 2. ORGANISATIONS (EHPAD ou Famille)
+// 2. DISPOSITIF (ESP32)
+// ---------------------------------------------------------
+model Device {
+  id              Int           @id @default(autoincrement())
+  macAddress      String        @unique
+  
+  // Relation inverse 1-1 avec User
+  user            User?
+  
+  organizationId  Int?
+  organization    Organization? @relation(fields: [organizationId], references: [id])
+  
+  created_at      DateTime      @default(now())
+  updated_at      DateTime      @updatedAt
+}
+
+// ---------------------------------------------------------
+// 3. ORGANISATION
 // ---------------------------------------------------------
 model Organization {
-  id         Int      @id @default(autoincrement())
-  name       String
-  type       String   // 'EHPAD' ou 'PRIVATE' (pour les particuliers)
-  created_at DateTime @default(now())
+  id          Int       @id @default(autoincrement())
+  name        String
+  adresse     String
+  type        String    // 'EHPAD', etc.
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
 
-  // Relations
-  members    StaffAssignment[] // Les infirmiers/aidants rattachés
-  residents  User[]            // Les résidents/parents rattachés
+  users       User[]
+  inventory   Device[]
 }
 
-// Table de jointure : Un infirmier peut travailler dans plusieurs EHPAD
-model StaffAssignment {
-  userId         Int
-  organizationId Int
-  role           String       @default("NURSE") // 'ADMIN_ORG', 'NURSE', 'FAMILY_MEMBER'
-  
-  user           User         @relation(fields: [userId], references: [id])
-  organization   Organization @relation(fields: [organizationId], references: [id])
-
-  @@id([userId, organizationId])
-}
-
-// 3. Table Relationship (Amis) - Adaptée au point 5 du contrat
+// ---------------------------------------------------------
+// 4. RELATIONSHIP (Amis)
+// ---------------------------------------------------------
 model Relationship {
-  requesterID Int     
-  receiverID  Int    
-  status      String   // 'PENDING', 'ACCEPTED', 'REJECTED'
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  requesterID Int
+  receiverID  Int
+  status      String    // 'PENDING', 'ACCEPTED', etc.
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
 
-  requester   User     @relation("Requester", fields: [requesterID], references: [id])
-  receiver    User     @relation("Receiver", fields: [receiverID], references: [id])
+  requester   User      @relation("Requester", fields: [requesterID], references: [id])
+  receiver    User      @relation("Receiver", fields: [receiverID], references: [id])
 
-  @@id([requesterID, receiverID]) 
+  @@id([requesterID, receiverID])
 }
 
-// 4. Table HydrationLog - Adaptée au point 4 du contrat
+// ---------------------------------------------------------
+// 5. HYDRATION LOG
+// ---------------------------------------------------------
 model HydrationLog {
-  id            Int      @id @default(autoincrement()) // ID unique recommandé pour éviter les collisions
-  userID        Int    
-  // adc_value     Int      // ADC raw value from the loadcell  -- Not currently stored, but can be added if needed for debugging or future features
-  weight        Float    // Data measured from the loadcell, converted to mass (g)
-  source        String   @default("hydrobase")  // 'app', 'hydrobase', 'other'
-  measured_at   DateTime @default(now()) 
+  id            Int      @id @default(autoincrement())
+  userID        Int
+  weight        Float
+  source        String   @default("hydrobase")
+  measured_at   DateTime @default(now())
   submitted_at  DateTime @default(now())
 
   user          User     @relation(fields: [userID], references: [id])
 }
 
-// 5. Table Challenge - Adaptée au point 6 du contrat
+// ---------------------------------------------------------
+// 6. CHALLENGE
+// ---------------------------------------------------------
 model Challenge {
-  id             Int          @id @default(autoincrement()) 
-  creator_id     Int          
-  title          String      
-  description    String?      @db.Text
-  start_date     DateTime     
-  end_date       DateTime
-  status         String       // 'active', 'completed', 'cancelled'
-  challenge_type String       // 'friends', 'global'
-  objective_ml   Int          // Objectif total du défi
-  
-  created_at     DateTime     @default(now())
-  updated_at     DateTime     @updatedAt
+  id              Int      @id @default(autoincrement())
+  creator_id      Int
+  title           String
+  description     String?  @db.Text
+  start_date      DateTime
+  end_date        DateTime
+  status          String
+  challenge_type  String
+  objective_ml    Int
 
-  creator        User         @relation("Creator", fields: [creator_id], references: [id])
-  participants   ChallengeParticipant[]
-}
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 
-// 6. Table Challenge Participants
-model ChallengeParticipant {
-  id           Int       @id @default(autoincrement()) 
-  challengeID  Int      
-  userID       Int       
-  joined_date  DateTime  @default(now()) 
-  progress_ml  Int       @default(0) // Suivi de progression requis par le point 7
-  status       String    // 'active', 'quit', 'completed'
-
-  challenge    Challenge @relation(fields: [challengeID], references: [id])
-  user         User      @relation(fields: [userID], references: [id])
-}
-
-// 7. Table Goal - Adaptée au point 8
-model Goal {
-  id           Int      @id @default(autoincrement()) 
-  userID       Int 
-  goal_type_id Int      
-  value        Float    // Renommé 'value' pour matcher le contrat
-  start_date   DateTime 
-  end_date     DateTime
-  status       String   // 'active', 'completed', 'cancelled'
-
-  user         User     @relation(fields: [userID], references: [id])
-  goalType     GoalType @relation(fields: [goal_type_id], references: [id])
-}
-
-// 8. Table GoalType 
-model GoalType {
-  id           Int      @id @default(autoincrement()) 
-  unite        String   // 'ml'
-  duree        String   // 'daily', 'weekly'
-  goals        Goal[]
+  creator         User     @relation("Creator", fields: [creator_id], references: [id])
+  participants    ChallengeParticipant[]
 }
 
 // ---------------------------------------------------------
-// 9. ALERTES (Pour le Dashboard EHPAD)
+// 7. PARTICIPANTS CHALLENGE
+// ---------------------------------------------------------
+model ChallengeParticipant {
+  id            Int       @id @default(autoincrement())
+  challengeID   Int
+  userID        Int
+  joined_date   DateTime  @default(now())
+  progress_ml   Int       @default(0)
+  status        String
+
+  challenge     Challenge @relation(fields: [challengeID], references: [id])
+  user          User      @relation(fields: [userID], references: [id])
+}
+
+// ---------------------------------------------------------
+// 8. GOAL (Objectifs)
+// ---------------------------------------------------------
+model Goal {
+  id            Int       @id @default(autoincrement())
+  userID        Int
+  goal_type_id  Int
+  value         Float
+  start_date    DateTime
+  end_date      DateTime
+  status        String
+
+  user          User      @relation(fields: [userID], references: [id])
+  goalType      GoalType  @relation(fields: [goal_type_id], references: [id])
+}
+
+// ---------------------------------------------------------
+// 9. TYPE D'OBJECTIF
+// ---------------------------------------------------------
+model GoalType {
+  id        Int      @id @default(autoincrement())
+  unit      String   // 'ml'
+  duration  String   // 'daily', 'weekly'
+  goals     Goal[]
+}
+
+// ---------------------------------------------------------
+// 10. ALERTES
 // ---------------------------------------------------------
 model AlertLog {
   id          Int      @id @default(autoincrement())
-  userId      Int      // L'utilisateur (résident) concerné
+  userId      Int
   message     String
-  severity    String   // 'RED' (danger), 'YELLOW' (attention)
+  severity    String   // 'RED', 'YELLOW'
   isResolved  Boolean  @default(false)
   created_at  DateTime @default(now())
 

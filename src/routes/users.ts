@@ -12,7 +12,20 @@ import { HydrationService } from '../service/hydration.service';
 router.get('/', async (req, res) => {
   try {
     const users = await prisma.user.findMany({
-      select: { id: true, username: true, email: true, nom: true, daily_goal: true }
+      select: { 
+        id: true,
+      username: true,
+      email: true,
+      surname: true,
+      name: true,
+      daily_goal: true,
+      esp32Id: true,
+      role: true,
+      organizationId: true,
+      age: true,
+      weight: true,
+      sex: true,
+      }
     });
     res.json(users);
   } catch (error) {
@@ -108,7 +121,7 @@ router.get('/:userId/consumption', async (req: any, res: any) => {
     if (!startDate || !endDate) {
       return res.status(400).json({ message: 'No startDate or endDate provided.' });
     }
-    const consumption = await HydrationDAO.getTotalConsumedByRange(userIdFromUrl, new Date(startDate), new Date(endDate));
+    const consumption = await HydrationDAO.getTotalConsumedByRange(userIdFromUrl, new Date(startDate), (() => { const d = new Date(endDate); d.setHours(23,59,59,999); return d; })());
     res.json({ totalVolume: consumption });
   } catch (error) {
     res.status(500).json({ message: `Server error: ${error}` });

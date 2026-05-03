@@ -11,10 +11,6 @@ datasource db {
   provider = "postgresql"
 }
 
-generator dbml {
-  provider = "prisma-dbml-generator"
-}
-
 // 1. Table Utilisateur
 model User {
   id                      Int            @id @default(autoincrement()) 

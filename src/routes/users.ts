@@ -269,5 +269,3 @@ router.post('/:userId/goal/calculate', authMiddleware, async (req: any, res: any
     res.status(500).json({ message: "Erreur lors du calcul de l'objectif" });
   }
 });
-
-export default router;

@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import authRouter from './routes/auth';
 import challengesRouter from './routes/challenges';
 import usersRouter from './routes/users';
+import alertRouter from './routes/alerts';
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ app.use((req, res, next) => {
 app.use('/api/auth', authRouter);
 app.use('/api/challenges', challengesRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/alerts', alertRouter);
 
 // check server status
 app.get('/api/ping', (req, res) => {

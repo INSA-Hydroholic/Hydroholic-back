@@ -22,6 +22,7 @@ services:
       - POSTGRES_PORT=5432
     ports:
       - "${SERVER_PORT}:${SERVER_PORT}"
+      - "5555:5555"
     
 volumes:
   db_data:

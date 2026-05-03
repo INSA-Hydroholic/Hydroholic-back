@@ -1,254 +1,144 @@
 import 'dotenv/config';
-import bcrypt from 'bcrypt';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import pg from 'pg';
 
-const adapter = new PrismaPg({
-    connectionString: `postgresql://${process.env["POSTGRES_USER"]}:${process.env["POSTGRES_PASSWORD"]}@${process.env["POSTGRES_HOST"]}:${process.env["POSTGRES_PORT"]}/${process.env["POSTGRES_DB"]}?schema=public`,
-});
-
+const { Pool } = pg;
+const connectionString = `postgresql://${process.env["POSTGRES_USER"]}:${process.env["POSTGRES_PASSWORD"]}@${process.env["POSTGRES_HOST"]}:${process.env["POSTGRES_PORT"]}/${process.env["POSTGRES_DB"]}?schema=public`;
+const pool = new Pool({ connectionString });
+const adapter = new PrismaPg(pool);
 export const prisma = new PrismaClient({ adapter });
 
-const addDays = (date: Date, days: number): Date => {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-};
+// Simulates 7 load-cell readings over 3 minutes — bottle drains from (consumed+50) down to ~50g
+function simulateSession(
+  userId: number,
+  consumed: number,
+  startHour: number
+): { userID: number; weight: number; source: string; measured_at: Date }[] {
+  const logs = [];
+  const today = new Date();
+  const startWeight = consumed + 50;
+  const totalSamples = 6; // 7 points: i=0..6
+  const dropPerSample = consumed / totalSamples;
+
+  for (let i = 0; i <= totalSamples; i++) {
+    const noise = (Math.random() - 0.5) * 2; // ±1g
+    const weight = Math.round(startWeight - dropPerSample * i + noise);
+    const measured_at = new Date(today);
+    measured_at.setHours(startHour, 0, 0, 0);
+    measured_at.setSeconds(i * 30); // one sample every 30 seconds
+    logs.push({ userID: userId, weight, source: "esp32", measured_at });
+  }
+  return logs;
+}
+
+async function insertSessions(
+  userId: number,
+  sessions: { consumed: number; hour: number }[]
+) {
+  for (const s of sessions) {
+    const logs = simulateSession(userId, s.consumed, s.hour);
+    for (const log of logs) {
+      await prisma.hydrationLog.create({ data: log });
+    }
+  }
+}
 
 async function main() {
-  const now = new Date();
-  const passwordHash = await bcrypt.hash('Hydroholic123!', 10);
-
-  // Clean in FK-safe order.
-  await prisma.challengeParticipant.deleteMany();
-  await prisma.relationship.deleteMany();
+  console.log("Nettoyage de la base");
+  await prisma.alertLog.deleteMany();
   await prisma.hydrationLog.deleteMany();
-  await prisma.goal.deleteMany();
-  await prisma.challenge.deleteMany();
-  await prisma.goalType.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.device.deleteMany();
+  await prisma.organization.deleteMany();
 
-  const goalTypes = await prisma.goalType.createManyAndReturn({
-    data: [
-      { unite: 'ml', duree: 'daily' },
-      { unite: 'ml', duree: 'weekly' },
-    ],
+  await prisma.$executeRawUnsafe(`ALTER SEQUENCE "User_id_seq" RESTART WITH 1`);
+  await prisma.$executeRawUnsafe(`ALTER SEQUENCE "Device_id_seq" RESTART WITH 1`);
+  await prisma.$executeRawUnsafe(`ALTER SEQUENCE "Organization_id_seq" RESTART WITH 1`);
+  await prisma.$executeRawUnsafe(`ALTER SEQUENCE "HydrationLog_id_seq" RESTART WITH 1`);
+  await prisma.$executeRawUnsafe(`ALTER SEQUENCE "AlertLog_id_seq" RESTART WITH 1`);
+
+  const org = await prisma.organization.create({
+    data: { name: "Résidence Test", adresse: "123 Rue de la République, 69000 Lyon", type: "EHPAD" }
   });
 
-  const dailyGoalType = goalTypes.find((g) => g.duree === 'daily');
-  const weeklyGoalType = goalTypes.find((g) => g.duree === 'weekly');
-
-  if (!dailyGoalType || !weeklyGoalType) {
-    throw new Error('GoalType seeding failed.');
-  }
-
-  const users = await prisma.user.createManyAndReturn({
-    data: [
-      {
-        email: 'admin@hydroholic.local',
-        password_hash: passwordHash,
-        nom: 'admin',
-        prenom: 'admin',
-        username: 'admin',
-        phone: '+33600000001',
-        age: 24,
-        sex: 'androgynous',
-        weight: 99.9,
-        height: 199,
-        region: 'Nowhere',
-        avatar_url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=admin',
-        num_intense_activities: 2,
-        num_moderate_activities: 4,
-        biography: 'I like administrating.',
-        daily_goal: 4000,
-      },
-      {
-        email: 'alice@hydroholic.local',
-        password_hash: passwordHash,
-        nom: 'Martin',
-        prenom: 'Alice',
-        username: 'alice',
-        phone: '+33600000001',
-        age: 24,
-        sex: 'female',
-        weight: 57.3,
-        height: 166,
-        region: 'Lyon',
-        avatar_url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=alice',
-        num_intense_activities: 2,
-        num_moderate_activities: 4,
-        biography: 'I like hydration challenges with friends.',
-        daily_goal: 2200,
-      },
-      {
-        email: 'bob@hydroholic.local',
-        password_hash: passwordHash,
-        nom: 'Durand',
-        prenom: 'Bob',
-        username: 'bob',
-        phone: '+33600000002',
-        age: 29,
-        sex: 'male',
-        weight: 81.5,
-        height: 182,
-        region: 'Toulouse',
-        avatar_url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=bob',
-        num_intense_activities: 4,
-        num_moderate_activities: 2,
-        biography: 'Runner and hiking fan.',
-        daily_goal: 2800,
-      },
-      {
-        email: 'clara@hydroholic.local',
-        password_hash: passwordHash,
-        nom: 'Petit',
-        prenom: 'Clara',
-        username: 'clara',
-        phone: '+33600000003',
-        age: 21,
-        sex: 'female',
-        weight: 62.1,
-        height: 170,
-        region: 'Nantes',
-        avatar_url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=clara',
-        num_intense_activities: 1,
-        num_moderate_activities: 5,
-        biography: 'Trying to improve daily consistency.',
-        daily_goal: 2100,
-      },
-      {
-        email: 'david@hydroholic.local',
-        password_hash: passwordHash,
-        nom: 'Bernard',
-        prenom: 'David',
-        username: 'david',
-        phone: '+33600000004',
-        age: 33,
-        sex: 'male',
-        weight: 76.9,
-        height: 178,
-        region: 'Paris',
-        avatar_url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=david',
-        num_intense_activities: 3,
-        num_moderate_activities: 3,
-        biography: 'Tech worker, needs hydration reminders.',
-        daily_goal: 2500,
-      },
-    ],
-  });
-
-  const alice = users.find((u) => u.username === 'alice');
-  const bob = users.find((u) => u.username === 'bob');
-  const clara = users.find((u) => u.username === 'clara');
-  const david = users.find((u) => u.username === 'david');
-
-  if (!alice || !bob || !clara || !david) {
-    throw new Error('User seeding failed.');
-  }
-
-  await prisma.relationship.createMany({
-    data: [
-      { requesterID: alice.id, receiverID: bob.id, status: 'ACCEPTED' },
-      { requesterID: alice.id, receiverID: clara.id, status: 'PENDING' },
-      { requesterID: david.id, receiverID: alice.id, status: 'REJECTED' },
-      { requesterID: bob.id, receiverID: clara.id, status: 'ACCEPTED' },
-    ],
-  });
-
-  await prisma.hydrationLog.createMany({
-    data: [
-      { userID: alice.id, measured_at: addDays(now, -2), weight: 140.2, source: 'app' },
-      { userID: alice.id, measured_at: addDays(now, -1), weight: 139.4, source: 'hydrobase' },
-      { userID: bob.id, measured_at: addDays(now, -2), weight: 180.5, source: 'app' },
-      { userID: bob.id, measured_at: addDays(now, -1), weight: 179.8, source: 'hydrobase' },
-      { userID: clara.id, measured_at: addDays(now, -1), weight: 155.9, source: 'app' },
-      { userID: david.id, measured_at: addDays(now, -1), weight: 170.4, source: 'hydrobase' },
-    ],
-  });
-
-  const globalChallenge = await prisma.challenge.create({
+  await prisma.user.create({
     data: {
-      creator_id: alice.id,
-      title: '7-Day Hydration Sprint',
-      description: 'Reach your hydration target every day for one week.',
-      start_date: addDays(now, -1),
-      end_date: addDays(now, 6),
-      status: 'active',
-      challenge_type: 'global',
-      objective_ml: 14000,
-    },
+      username: "jean_nurse", email: "jean.dupont@residence-test.fr",
+      password_hash: "Hydroholic123!", role: "STAFF",
+      name: "Jean", surname: "Dupont", organizationId: org.id,
+    }
   });
 
-  const friendsChallenge = await prisma.challenge.create({
+  const esp1 = await prisma.device.create({ data: { macAddress: "AA:BB:CC:DD:EE:01", organizationId: org.id } });
+  const esp2 = await prisma.device.create({ data: { macAddress: "AA:BB:CC:DD:EE:02", organizationId: org.id } });
+  const esp3 = await prisma.device.create({ data: { macAddress: "AA:BB:CC:DD:EE:03", organizationId: org.id } });
+
+  // ── Yvette : objectif ATTEINT (goal 1500, 1600 consumed) ──
+  const yvette = await prisma.user.create({
     data: {
-      creator_id: bob.id,
-      title: 'Friends Weekend Boost',
-      description: 'Friendly hydration race over the weekend.',
-      start_date: addDays(now, -5),
-      end_date: addDays(now, -1),
-      status: 'completed',
-      challenge_type: 'friends',
-      objective_ml: 5000,
-    },
+      username: "yvette_moreau", email: "yvette.moreau@residence-test.fr",
+      password_hash: "resident-placeholder", role: "RESIDENT",
+      name: "Yvette", surname: "Moreau",
+      age: 82, weight: 58.0, sex: "F", daily_goal: 1500,
+      esp32Id: esp1.id, organizationId: org.id,
+    }
+  });
+  await insertSessions(yvette.id, [
+    { consumed: 300, hour: 8  },
+    { consumed: 280, hour: 10 },
+    { consumed: 380, hour: 12 },
+    { consumed: 340, hour: 15 },
+    { consumed: 300, hour: 17 },
+  ]);
+
+  // ── Marguerite : PEU bu + ALERTE ROUGE (goal 2000, 400 consumed) ──
+  const marguerite = await prisma.user.create({
+    data: {
+      username: "m_fontaine", email: "marguerite.fontaine@residence-test.fr",
+      password_hash: "resident-placeholder", role: "RESIDENT",
+      name: "Marguerite", surname: "Fontaine",
+      age: 78, weight: 63.5, sex: "F", daily_goal: 2000,
+      esp32Id: esp2.id, organizationId: org.id,
+    }
+  });
+  await insertSessions(marguerite.id, [
+    { consumed: 400, hour: 8 },
+  ]);
+  await prisma.alertLog.create({
+    data: {
+      userId: marguerite.id,
+      message: "N'a pas bu depuis 6h — seulement 400 mL aujourd'hui",
+      severity: "RED", isResolved: false,
+    }
   });
 
-  await prisma.challengeParticipant.createMany({
-    data: [
-      { challengeID: globalChallenge.id, userID: alice.id, joined_date: addDays(now, -1), progress_ml: 2100, status: 'active' },
-      { challengeID: globalChallenge.id, userID: bob.id, joined_date: addDays(now, -1), progress_ml: 2400, status: 'active' },
-      { challengeID: globalChallenge.id, userID: clara.id, joined_date: addDays(now, -1), progress_ml: 1500, status: 'active' },
-      { challengeID: friendsChallenge.id, userID: bob.id, joined_date: addDays(now, -5), progress_ml: 5200, status: 'completed' },
-      { challengeID: friendsChallenge.id, userID: david.id, joined_date: addDays(now, -5), progress_ml: 3200, status: 'quit' },
-    ],
+  // ── Roger : mi-chemin + ALERTE JAUNE (goal 1800, 850 consumed) ──
+  const roger = await prisma.user.create({
+    data: {
+      username: "roger_blanche", email: "roger.blanche@residence-test.fr",
+      password_hash: "resident-placeholder", role: "RESIDENT",
+      name: "Roger", surname: "Blanche",
+      age: 85, weight: 72.0, sex: "M", daily_goal: 1800,
+      esp32Id: esp3.id, organizationId: org.id,
+    }
+  });
+  await insertSessions(roger.id, [
+    { consumed: 200, hour: 8  },
+    { consumed: 350, hour: 11 },
+    { consumed: 300, hour: 14 },
+  ]);
+  await prisma.alertLog.create({
+    data: {
+      userId: roger.id,
+      message: "Objectif journalier à mi-chemin — à surveiller",
+      severity: "YELLOW", isResolved: false,
+    }
   });
 
-  await prisma.goal.createMany({
-    data: [
-      {
-        userID: alice.id,
-        goal_type_id: dailyGoalType.id,
-        value: 2200,
-        start_date: addDays(now, -30),
-        end_date: addDays(now, 30),
-        status: 'active',
-      },
-      {
-        userID: bob.id,
-        goal_type_id: weeklyGoalType.id,
-        value: 18000,
-        start_date: addDays(now, -7),
-        end_date: addDays(now, 21),
-        status: 'active',
-      },
-      {
-        userID: clara.id,
-        goal_type_id: dailyGoalType.id,
-        value: 2000,
-        start_date: addDays(now, -40),
-        end_date: addDays(now, -10),
-        status: 'completed',
-      },
-      {
-        userID: david.id,
-        goal_type_id: weeklyGoalType.id,
-        value: 16000,
-        start_date: addDays(now, -20),
-        end_date: addDays(now, -5),
-        status: 'cancelled',
-      },
-    ],
-  });
-
-  console.log('Database seeded successfully.');
-  console.log('Test users: alice, bob, clara, david');
-  console.log('Test password for all users: Hydroholic123!');
+  console.log("Base de données prête");
 }
 
 main()
-  .catch((error) => {
-    console.error('Seeding failed:', error);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .catch((e) => { console.error('Seeding failed:', e); process.exit(1); })
+  .finally(async () => { await prisma.$disconnect(); await pool.end(); });

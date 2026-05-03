@@ -119,7 +119,10 @@ router.get('/:userId/consumption', async (req: any, res: any) => {
 // Update user profile
 router.put('/profile', authMiddleware, async (req: any, res: any) => {
   try {
-    const userId = req.user.id;
+    const userId = parseInt(req.user.sub || req.user.id);
+    if (isNaN(userId)) {
+      return res.status(400).json({ message: "ID utilisateur invalide dans le token" });
+    }
     const updates = req.body;
 
     // 1. validate input data
@@ -127,6 +130,8 @@ router.put('/profile', authMiddleware, async (req: any, res: any) => {
     
     if (updates.nom) validData.nom = updates.nom;
     if (updates.prenom) validData.prenom = updates.prenom;
+    if (updates.email) validData.email = updates.email;
+    if (updates.region) validData.region = updates.region; 
     if (updates.biography !== undefined) validData.biography = updates.biography;
     
     if (updates.age !== undefined) {
@@ -142,6 +147,15 @@ router.put('/profile', authMiddleware, async (req: any, res: any) => {
     if (updates.weight !== undefined) {
       if (updates.weight <= 0) return res.status(400).json({ message: "Invalid weight" });
       validData.weight = updates.weight;
+    }
+
+    if (updates.num_moderate_activities !== undefined) {
+      if (updates.num_moderate_activities < 0) return res.status(400).json({ message: "Invalid number of moderate activities" });
+      validData.num_moderate_activities = parseInt(updates.num_moderate_activities);
+    }
+    if (updates.num_intense_activities !== undefined) {
+      if (updates.num_intense_activities < 0) return res.status(400).json({ message: "Invalid number of intense activities" });
+      validData.num_intense_activities = parseInt(updates.num_intense_activities);
     }
 
     // 2. update user profile
@@ -168,7 +182,7 @@ router.put('/profile', authMiddleware, async (req: any, res: any) => {
 
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: error.message || "Erreur interne" });
   }
 });
 

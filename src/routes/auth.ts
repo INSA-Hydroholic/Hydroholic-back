@@ -1,8 +1,11 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { UserDAO } from '../dao/user.dao';
 import { authMiddleware, AuthRequest } from '../middlewares/auth.middleware';
+import axios from 'axios';
+import { prisma } from '../lib/prisma';
+import { HydrationService } from '../service/hydration.service';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'change-me-secret';
@@ -15,43 +18,83 @@ const createToken = (userId: number, username: string): string => {
 };
 
 // 1. register
-router.post('/register', async (req, res) => {
+router.post('/register', async (req: Request, res: Response) => {
   try {
-    const { username, email, password, nom, prenom, ville, poids, age, sexe, telephone, activiteIntense, activiteModeree} = req.body;
-    if (!username || !email || !password) {
-      return res.status(400).json({ message: 'username, email et password sont requis' });
+    // 1. get registration info from request body and validate
+    const { email, password, height, weight, age, gender, activityLevel } = req.body;
+
+    if (!email || !password || !height || !weight || !age || !gender || !activityLevel) {
+      return res.status(400).json({ error: 'Missing required registration fields' });
     }
 
-    const existingUsers = await UserDAO.getByInfo({
-      OR: [{ username }, { email }]
-    });
-    
-    if (existingUsers.length > 0) {
-      return res.status(409).json({ message: 'Utilisateur déjà existant' });
+    // 2. hash the password before storing
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 3. call ML service for cold-start prediction to get initial hydration target and persona assignment
+    let initialTarget = weight * 30;
+    let assignedPersonaId = null;
+
+    try {
+      // timeout set to 3 seconds to prevent blocking registration if ML service is slow/unavailable
+      const mlResponse = await axios.post(
+        'http://localhost:5000/predict/cold-start', 
+        {
+          height: height,
+          weight: weight,
+          age: age,
+          activity_level: activityLevel
+        },
+        { timeout: 3000 } 
+      );
+
+      if (mlResponse.data && mlResponse.data.recommended_target) {
+        initialTarget = mlResponse.data.recommended_target;
+        assignedPersonaId = mlResponse.data.persona_id;
+        console.log(`[ML] Cold-start successful. Assigned to Persona ${assignedPersonaId}, Target: ${initialTarget}ml`);
+      }
+    } catch (mlError: any) {
+      console.warn(`[ML-Fallback] Cold-start API failed (${mlError.message}). Using default medical formula.`);
     }
+    const calculatedTarget = HydrationService.calculatePersonalizedGoal({
+          weight,
+          age,
+          gender: gender === 'male' ? 'H' : 'F',
+          intenseMin: 0,
+          moderateMin: 0,
+          temp: 20
+    });
+    const initialratio = initialTarget / calculatedTarget;
 
-    const passwordHash = await bcrypt.hash(password, 10);
-    const newUser = await UserDAO.createUser({
-      username,
-      email,
-      password_hash: passwordHash,
-      nom: nom,
-      prenom: prenom,
-      city: ville,             // Mapping : front 'ville' -> back 'city'
-      weight: parseFloat(poids), // Conversion en nombre
-      age: parseInt(age),        // Conversion en nombre
-      sex: sexe,               // Mapping : front 'sexe' -> back 'sex'
-      phone: telephone,
-      num_intense_activities : parseInt(activiteIntense) || 0, // Conversion en nombre  
-      num_moderate_activities : parseInt(activiteModeree) || 0 // Conversion en nombre
+    // 4. create the user in the database with the initial ratio and persona info
+    const newUser = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        height,
+        weight,
+        age,
+        activityLevel,
+        hydrationSensitivity: 1.0,      
+        dailyHydrationCoefficient: initialratio, 
+      }
     });
 
-    const token = createToken(newUser.id, newUser.username);
-    const { password_hash, ...safeUser } = newUser;
-    
-    res.status(201).json({ token, user: safeUser });
+    // send back to frontend the user info along with the initial target and persona assignment for immediate use in the app
+    // const token = generateToken(newUser.id); 
+
+    res.status(201).json({
+      message: 'User registered successfully',
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        dailyTarget: initialTarget,
+        assignedPersona: assignedPersonaId
+      }
+    });
+
   } catch (error) {
-    res.status(500).json({ message: 'Erreur lors de la création du compte', error });
+    console.error('[Auth] Registration error:', error);
+    res.status(500).json({ error: 'Internal server error during registration' });
   }
 });
 

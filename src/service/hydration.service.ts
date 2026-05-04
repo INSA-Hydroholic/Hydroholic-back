@@ -19,6 +19,7 @@ const CONFIG = {
   MAX_SENSITIVITY: 1.5,    // Upper bound for sensitivity (max 150% of predicted amount)
   MIN_DAILY_COEFF: 0.6,    // Lower bound for daily goal (prevents dehydration due to habit decline)
   MAX_DAILY_COEFF: 1.2,    // Upper bound for daily goal
+  GAMMA: 0.3               // ratio of short-term sensitivity deviation to be absorbed into long-term daily coefficient (prevents overfitting to short-term fluctuations)
 };
 
 /**
@@ -71,37 +72,46 @@ export async function updateHydrationSensitivity(
   await UserDAO.updateUser(userId, { hydrationSensitivity: newSensitivity });
   console.log(`[Hydration] User ${userId} sensitivity updated to ${newSensitivity.toFixed(2)}`);
 }
-
 /**
- * 2. Daily hydration coefficient settlement (recommended for a Cron Job, running once daily at midnight)
+ * 2. Daily Hydration Coefficient Settlement (Accounts for Hidden Intake + Habits)
  * 
  * @param userId User ID
- * @param missedCount Number of missed recommendations (unrecorded logs) yesterday
+ * @param missedCount Number of missed (unlogged) recommendations from yesterday
  */
 export async function updateDailyCoefficient(
   userId: number,
   missedCount: number
 ): Promise<void> {
-  const user = await UserDAO.getUserById(userId);
-  let currentCoeff = user?.dailyHydrationCoefficient || 1.0;
+  const user = await UserDAO.getUserById(userId); 
+  const currentCoeff = user?.dailyHydrationCoefficient || 1.0;
+  const currentSensitivity = user?.hydrationSensitivity || 1.0;
 
   let newCoeff = currentCoeff;
 
-  // Decrease the coefficient based on missed counts as a "passive habit" penalty
+  // Evaluate hidden water intake based on Sensitivity
+  const sensitivityOffset = currentSensitivity - 1.0;
+
+  // Incorporate short-term sensitivity deviations into the long-term daily coefficient at a specific ratio (GAMMA)
+  newCoeff = currentCoeff + (CONFIG.GAMMA * sensitivityOffset);
+
+  // Failure to log suggests the current recommendation rhythm may not align with user habits; apply a minor adjustment
   if (missedCount > 0) {
-    // Decay formula: current coefficient - (penalty step * missed count)
-    newCoeff = currentCoeff - (CONFIG.BETA * missedCount);
+    newCoeff -= (CONFIG.BETA * missedCount);
   } else {
-    // Small recovery reward if the user logged everything on time (incentive mechanism)
-    newCoeff = currentCoeff + 0.02; 
+    newCoeff += 0.01; // Small reward for full attendance to encourage consistency
   }
 
-  // Health safety baseline (clamping)
   newCoeff = Math.min(Math.max(newCoeff, CONFIG.MIN_DAILY_COEFF), CONFIG.MAX_DAILY_COEFF);
 
-  // Persist update to database
-  await UserDAO.updateUser(userId, { dailyHydrationCoefficient: newCoeff });
-  console.log(`[Hydration] User ${userId} daily coefficient settled at ${newCoeff.toFixed(2)}`);
+  const resetSensitivity = currentSensitivity + (1.0 - currentSensitivity) * 0.5;
+
+  // Update both daily coefficient and reset sensitivity to prevent long-term drift
+  await UserDAO.updateUser(userId, {
+    dailyHydrationCoefficient: newCoeff,
+    hydrationSensitivity: resetSensitivity
+  });
+
+  console.log(`[Hydration] User ${userId} daily Coeff settled at ${newCoeff.toFixed(2)}, Sensitivity reset to ${resetSensitivity.toFixed(2)}`);
 }
 
 export const HydrationService = {

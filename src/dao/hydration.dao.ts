@@ -47,13 +47,31 @@ export const HydrationDAO = {
     getTotalConsumedByRange: async (userId: number, startDate: Date, endDate: Date) => {
         const weights = await prisma.hydrationLog.findMany({
             where: {
-            userID: userId,
-            measured_at: { gte: startDate, lte: endDate }
-            }
+                userID: userId,
+                measured_at: { gte: startDate, lte: endDate }
+            },
+            orderBy: { measured_at: 'asc' }
         });
-
-        return weights.reduce((total, log) => total + log.weight, 0);
-        },
+        /**
+         * Weights are stored in grams and contain load cell drifting errors, 
+         * so we need to apply a correction factor to get a more accurate estimate 
+         * of the actual water volume consumed.
+         */
+        const minRateDelta = 5; // Minimum weight change (per minute) in grams to consider as actual water intake - derived from empirical observations of the device's noise level
+        const maxRateDelta = 300; // Drinking more than 300g (300ml) per minute is unlikely, so we can ignore such spikes as noise or refills.
+        let totalVolume = 0;
+        for (let i = 1; i < weights.length; i++) {
+            let delta = weights[i].weight - weights[i - 1].weight;
+            if (delta > 0) { continue; }  // Weight decreases when water is consumed, so we only consider negative deltas. Positive deltas are likely due to noise or refills.
+            delta = -delta; // Convert to positive volume change
+            const timeDelta = (weights[i].measured_at.getTime() - weights[i - 1].measured_at.getTime()) / 60000; // time difference in minutes
+            const rate = delta / timeDelta;
+            if (minRateDelta < rate && rate < maxRateDelta) {
+                totalVolume += delta;
+            }
+        }
+        return totalVolume;
+    },
 
     //update
     updateHydrationLog: async (logId: number, dataToUpdate: Prisma.HydrationLogUpdateInput) => {

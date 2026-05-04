@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change-me-secret';
 
-export type AuthRequest = Request & {
+export interface AuthRequest extends Request {
   user?: { 
     sub: number;
     username: string; 

@@ -1,14 +1,12 @@
-import { Response } from 'express';
 import { Router } from 'express';
 import { ChallengeDAO } from '../dao/challenge.dao';
 import { ChallengeParticipantDAO } from '../dao/participant.dao';
-import { prisma } from '../lib/prisma';
-import { authMiddleware, AuthRequest } from '../middlewares/auth.middleware';
 
 const router = Router();
+import { prisma } from '../lib/prisma';
 
-router.use(authMiddleware);
-router.get('/', async (req: AuthRequest, res: Response) => {
+// get all challenges
+router.get('/', async (req, res) => {
   try {
     const challenges = await prisma.challenge.findMany({
       include: { participants: true }
@@ -19,7 +17,8 @@ router.get('/', async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.get('/:challengeId', async (req: AuthRequest, res: Response) => {
+// get challenge by id
+router.get('/:challengeId', async (req, res) => {
   try {
     const challengeId = parseInt(req.params.challengeId);
     const challenge = await prisma.challenge.findUnique({
@@ -34,11 +33,10 @@ router.get('/:challengeId', async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.post('/', async (req: AuthRequest, res: Response) => {
+// create a new challenge
+router.post('/', async (req, res) => {
   try {
-    const { name, type, objective, description } = req.body;
-    
-    const creatorId = req.user!.sub; 
+    const { name, type, objective, duration, creatorId, description } = req.body;
     
     const newChallenge = await ChallengeDAO.createChallenge({
       title: name,
@@ -48,31 +46,22 @@ router.post('/', async (req: AuthRequest, res: Response) => {
       objective_ml: parseInt(objective) || 0,
       start_date: new Date(),
       end_date: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000),
-      creator: { connect: { id: creatorId } }
+      creator: { connect: { id: parseInt(creatorId) } }
     });
 
     res.status(201).json(newChallenge);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Erreur de création' });
+    res.status(500).json({ message: 'Erreur de création', error });
   }
 });
 
-router.post('/:challengeId/join', async (req: AuthRequest, res: Response) => {
+// join a challenge
+router.post('/:challengeId/join', async (req, res) => {
   try {
     const challengeId = parseInt(req.params.challengeId);
-    const userId = req.user!.sub;
+    const userId = parseInt(req.body.userId);
 
-    const existing = await prisma.challengeParticipant.findFirst({
-      where: { 
-        challengeID: challengeId,  // ← nombre real en tu DB
-        userID: userId              // ← nombre real en tu DB
-      }
-    });
-
-    if (existing) {
-      return res.status(409).json({ message: 'Tu participes déjà à ce défi.' });
-    }
+    if (!userId) return res.status(400).json({ message: 'userId requis' });
 
     const participation = await ChallengeParticipantDAO.createParticipant({
       challenge: { connect: { id: challengeId } },

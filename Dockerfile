@@ -15,8 +15,6 @@ RUN npx prisma generate
 COPY . .
 
 EXPOSE 3000
-# EXPOSE 5555 (npx prisma studio)
-# EXPOSE 8080 (server port)
 
 # 'CMD' is used to set the default command to run for this container.
 CMD ["npm", "start"]

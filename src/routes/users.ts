@@ -233,7 +233,7 @@ router.post('/recommendation', authMiddleware, async (req: AuthRequest, res: any
 
   } catch (error) {
     console.error("Recommendation Error:", error);
-    res.status(500).json({ message: "无法获取推荐" });
+    res.status(500).json({ message: "Erreur lors de la récupération des recommandations" });
   }
 });
 

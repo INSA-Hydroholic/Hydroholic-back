@@ -12,6 +12,97 @@ type logParams = {
 
 const STABLE_THRESHOLD = 5;
 const DRINK_MAX_THRESHOLD = 500;
+const CONFIG = {
+  ALPHA: 0.1,              // Sensitivity learning rate (controls magnitude of a single fluctuation)
+  BETA: 0.05,              // Decay step per unrecorded recommendation
+  MIN_SENSITIVITY: 0.5,    // Lower bound for sensitivity (min 50% of predicted amount)
+  MAX_SENSITIVITY: 1.5,    // Upper bound for sensitivity (max 150% of predicted amount)
+  MIN_DAILY_COEFF: 0.6,    // Lower bound for daily goal (prevents dehydration due to habit decline)
+  MAX_DAILY_COEFF: 1.2,    // Upper bound for daily goal
+};
+
+/**
+ * 1. Update hydration sensitivity (called after each recommendation cycle or user log)
+ * 
+ * @param userId User ID
+ * @param expectedAmount Predicted hourly water intake (e)
+ * @param actualAmount Actual hourly water intake (r). Pass null if no record exists.
+ * @param responseTimeMs Time elapsed between recommendation and log (ms). Faster response indicates higher engagement.
+ */
+export async function updateHydrationSensitivity(
+  userId: number,
+  expectedAmount: number,
+  actualAmount: number | null,
+  responseTimeMs: number | null
+): Promise<void> {
+  // User offline or missed check-in -> Freeze sensitivity and return
+  if (actualAmount === null || actualAmount === undefined) {
+    console.log(`[Hydration] User ${userId} is offline/missed. Sensitivity frozen.`);
+    return; 
+  }
+
+  // Prevent division by zero
+  const safeExpected = expectedAmount > 0 ? expectedAmount : 1;
+  
+  // Calculate deviation ratio
+  const ratio = actualAmount / safeExpected; 
+
+  // Calculate response engagement score (between 0 and 1. Full score 1.0 for responses within 30 mins/1800000ms)
+  let responseScore = 1.0;
+  if (responseTimeMs !== null) {
+    const maxResponseTime = 1800000; // 30 mins
+    responseScore = Math.max(0.1, 1 - (responseTimeMs / maxResponseTime)); 
+  }
+
+  // Calculate deviation amount: positive if drinking more, negative if drinking less, weighted by engagement
+  const deviation = (ratio - 1) * responseScore;
+
+  // Retrieve current user sensitivity
+  const user = await UserDAO.getUserById(userId); // Depends on your DAO implementation
+  let currentSensitivity = user?.hydrationSensitivity || 1.0;
+
+  // Update formula: current sensitivity + (learning rate * deviation)
+  let newSensitivity = currentSensitivity + (CONFIG.ALPHA * deviation);
+
+  // Clamp values (to prevent sudden large spikes/drops)
+  newSensitivity = Math.min(Math.max(newSensitivity, CONFIG.MIN_SENSITIVITY), CONFIG.MAX_SENSITIVITY);
+
+  // Persist update to database
+  await UserDAO.updateUser(userId, { hydrationSensitivity: newSensitivity });
+  console.log(`[Hydration] User ${userId} sensitivity updated to ${newSensitivity.toFixed(2)}`);
+}
+
+/**
+ * 2. Daily hydration coefficient settlement (recommended for a Cron Job, running once daily at midnight)
+ * 
+ * @param userId User ID
+ * @param missedCount Number of missed recommendations (unrecorded logs) yesterday
+ */
+export async function updateDailyCoefficient(
+  userId: number,
+  missedCount: number
+): Promise<void> {
+  const user = await UserDAO.getUserById(userId);
+  let currentCoeff = user?.dailyHydrationCoefficient || 1.0;
+
+  let newCoeff = currentCoeff;
+
+  // Decrease the coefficient based on missed counts as a "passive habit" penalty
+  if (missedCount > 0) {
+    // Decay formula: current coefficient - (penalty step * missed count)
+    newCoeff = currentCoeff - (CONFIG.BETA * missedCount);
+  } else {
+    // Small recovery reward if the user logged everything on time (incentive mechanism)
+    newCoeff = currentCoeff + 0.02; 
+  }
+
+  // Health safety baseline (clamping)
+  newCoeff = Math.min(Math.max(newCoeff, CONFIG.MIN_DAILY_COEFF), CONFIG.MAX_DAILY_COEFF);
+
+  // Persist update to database
+  await UserDAO.updateUser(userId, { dailyHydrationCoefficient: newCoeff });
+  console.log(`[Hydration] User ${userId} daily coefficient settled at ${newCoeff.toFixed(2)}`);
+}
 
 export const HydrationService = {
   async logWater(logParams: { userId: number; weight: number; source?: string }) {

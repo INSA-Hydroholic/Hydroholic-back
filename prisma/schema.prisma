@@ -34,6 +34,8 @@ model User {
   num_moderate_activities Int            @default(0)
   biography               String?        @db.Text
   daily_goal              Int            @default(2000) // Unité en ml
+  hydrationSensitivity    Float    @default(1.0)
+  dailyHydrationCoefficient Float    @default(1.0)
 
   // --- NOUVEAUTÉS EHPAD / MONITORING ---
   role                    String   @default("USER") // 'USER' (étudiant, individu), 'STAFF' (infirmier), 'RESIDENT' (personne âgée), 'FAMILY' (aidant privé)

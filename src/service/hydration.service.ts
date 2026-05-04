@@ -14,7 +14,7 @@ const STABLE_THRESHOLD = 5;
 const DRINK_MAX_THRESHOLD = 500;
 const CONFIG = {
   ALPHA: 0.1,              // Sensitivity learning rate (controls magnitude of a single fluctuation)
-  BETA: 0.05,              // Decay step per unrecorded recommendation
+  BETA: 0.02,              // Decay step per unrecorded recommendation
   MIN_SENSITIVITY: 0.5,    // Lower bound for sensitivity (min 50% of predicted amount)
   MAX_SENSITIVITY: 1.5,    // Upper bound for sensitivity (max 150% of predicted amount)
   MIN_DAILY_COEFF: 0.6,    // Lower bound for daily goal (prevents dehydration due to habit decline)

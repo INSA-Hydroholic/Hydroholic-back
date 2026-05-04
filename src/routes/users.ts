@@ -173,3 +173,4 @@ router.post('/:userId/goal/calculate', authMiddleware, async (req: any, res: any
 });
 
 export default router;
+

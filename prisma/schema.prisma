@@ -58,6 +58,8 @@ model User {
 model Device {
   id              Int           @id @default(autoincrement())
   macAddress      String        @unique
+  batteryLevel              Int?
+  batteryMeasuredAt         DateTime?
   
   // Relation inverse 1-1 avec User
   user            User?

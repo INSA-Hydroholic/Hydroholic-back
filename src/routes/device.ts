@@ -1,36 +1,28 @@
 import { Router } from 'express';
-import { MeasureDAO } from '../dao/measure.dao';
+import { DeviceDAO } from '../dao/device.dao';
 
 const router = Router();
 import { prisma } from '../lib/prisma';
 
-// First service : Get ID based on the MAC address of the ESP
-// GET /api/device/getId/:mac
-router.get('/getId/:mac', async (req, res) => {
+// Route for an ESP to register itself
+router.post('/register', async (req, res) => {
     try {
-        const { mac } = req.params;
+        const { mac } = req.body;
+        if (!mac) return res.status(400).json({ message: 'MAC Address required' });
 
-        // On cherche le device, et on "inclut" l'utilisateur lié
-        const device = await prisma.device.findUnique({
-            where: { macAddress: mac },
-            include: { user: true }
-        });
-
-        if (!device || !device.user) {
-            return res.status(404).json({ message: 'Dispositif ou utilisateur non trouvé' });
-        }
-
-        res.json({ userId: device.user.id });
+        const device = await DeviceDAO.register(mac);
+        res.status(201).json({ message: 'Device registered', device });
     } catch (error) {
-        res.status(500).json({ message: 'Erreur serveur lors de la récupération de l\'ID' });
+        res.status(500).json({ message: 'Error during registration' });
     }
 });
 
 // Main service: ESP posts its measures
 // POST/api/device/measure
-router.post('/measure', async (req, res) => {
+router.post('/:mac/logs', async (req, res) => {
     try {
-        const { weight, battery, time, mac } = req.body;
+        const { mac } = req.params;
+        const { weight, time, stable } = req.body;
 
         if (weight === undefined || mac === undefined) {
             return res.status(400).json({ message: 'Incomplete data: weight or mac missing' });
@@ -38,12 +30,9 @@ router.post('/measure', async (req, res) => {
         if (time === undefined) {
             console.warn("Time missing in ESP32 payload. Defaulting to server time.");
         }
-        if (battery === undefined) {
-            console.warn("Battery level missing in ESP32 payload. Consider checking battery manually.");
-        }
         
         // Recover userId and deviceId based on the MAC address of the ESP
-        const device = await MeasureDAO.findUserByMac(mac);
+        const device = await DeviceDAO.findUserByMac(mac);
 
         if (!device) {
             return res.status(404).json({ message: 'Couldn\'t find device' });
@@ -53,11 +42,11 @@ router.post('/measure', async (req, res) => {
         }
 
         // Create a new Hydration Log object
-        const newLog = await MeasureDAO.createMeasure({
+        const newLog = await DeviceDAO.createMeasure({
             weight: parseFloat(weight),
-            userId: device.user.id,
+            userID: device.user.id,
             source: `ESP32_WiFi_${mac}`,
-            date: time ? new Date(time) : undefined
+            measured_at: time ? new Date(parseInt(time) * 1000) : undefined
         });
 
         res.status(201).json({ status: 'success', data: newLog });
@@ -65,6 +54,20 @@ router.post('/measure', async (req, res) => {
     } catch (error) {
         console.error("Error with measure endpoint:", error);
         res.status(500).json({ message: 'Error while creating hydration log' });
+    }
+});
+
+router.post('/:mac/status', async (req, res) => {
+    try {
+        const { mac } = req.params;
+        const { battery, time } = req.body;
+
+        const date = time ? new Date(parseInt(time) * 1000) : new Date();
+        await DeviceDAO.updateBattery(mac, parseInt(battery), date);
+
+        res.json({ message: 'Battery status updated' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error while updating battery status' });
     }
 });
 

@@ -95,7 +95,8 @@ router.post('/:deviceID/status', async (req, res) => {
     }
 });
 
-// Called by the Frontend. Get the connection code for a given establishment.
+// Called by the Frontend
+// Get the connection code for a given establishment.
 router.get('/connectionCode', async (req, res) => {
     const { establishmentID } = req.body;
 
@@ -107,11 +108,12 @@ router.get('/connectionCode', async (req, res) => {
     res.json({ connectionCode });
 });
 
+// Called by Frontend
 // Get the list of devices for a given establishment.
 router.get('/devicesListByEstablishment/:establishmentID', async (req, res) => {
     try {
         const { establishmentID } = req.params;
-        const devices = DeviceDAO.findDevicesByEstablishment(establishmentID);
+        const devices = await DeviceDAO.findDevicesByEstablishment(parseInt(establishmentID));
         res.json(devices);
     } catch (error) {
         res.status(500).json({ message: 'Error while fetching devices' });

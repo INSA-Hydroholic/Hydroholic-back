@@ -1,4 +1,4 @@
-// Config de base
+// BASE CONFIG
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,7 +8,7 @@ datasource db {
 }
 
 // ---------------------------------------------------------
-// 1. UTILISATEUR
+// 1. USER
 // ---------------------------------------------------------
 model User {
   id                      Int           @id @default(autoincrement())
@@ -31,18 +31,18 @@ model User {
   room                    String?
   role                    String        @default("USER")
   
-  // Relation 1-1 avec Device (ESP32)
+  // 1-1 Relationship with Device (ESP32)
   esp32                   Device?       @relation(fields: [esp32Id], references: [id])
   esp32Id                 Int?          @unique
 
-  // Relation avec Organisation
+  // Relationship with Organization
   organizationId          Int?
   organization            Organization? @relation(fields: [organizationId], references: [id])
 
   created_at              DateTime      @default(now())
   updated_at              DateTime      @updatedAt
 
-  // Relations inverses
+  // Inverse relantionships
   hydrationLogs           HydrationLog[]
   createdChallenges       Challenge[]   @relation("Creator")
   participations          ChallengeParticipant[]
@@ -53,7 +53,7 @@ model User {
 }
 
 // ---------------------------------------------------------
-// 2. DISPOSITIF (ESP32)
+// 2. DEVICES (ESP32s)
 // ---------------------------------------------------------
 model Device {
   id              Int           @id @default(autoincrement())
@@ -61,7 +61,7 @@ model Device {
   batteryLevel              Int?
   batteryMeasuredAt         DateTime?
   
-  // Relation inverse 1-1 avec User
+  // Reverse 1-1 relationship with User
   user            User?
   
   organizationId  Int?
@@ -72,7 +72,7 @@ model Device {
 }
 
 // ---------------------------------------------------------
-// 3. ORGANISATION
+// 3. ESTABLISHMENT
 // ---------------------------------------------------------
 model Organization {
   id          Int       @id @default(autoincrement())
@@ -87,7 +87,7 @@ model Organization {
 }
 
 // ---------------------------------------------------------
-// 4. RELATIONSHIP (Amis)
+// 4. RELATIONSHIP (Friends)
 // ---------------------------------------------------------
 model Relationship {
   requesterID Int
@@ -138,7 +138,7 @@ model Challenge {
 }
 
 // ---------------------------------------------------------
-// 7. PARTICIPANTS CHALLENGE
+// 7. CHALLENGE PARTICIPANTS
 // ---------------------------------------------------------
 model ChallengeParticipant {
   id            Int       @id @default(autoincrement())
@@ -153,7 +153,7 @@ model ChallengeParticipant {
 }
 
 // ---------------------------------------------------------
-// 8. GOAL (Objectifs)
+// 8. GOAL (Objectives)
 // ---------------------------------------------------------
 model Goal {
   id            Int       @id @default(autoincrement())
@@ -169,7 +169,7 @@ model Goal {
 }
 
 // ---------------------------------------------------------
-// 9. TYPE D'OBJECTIF
+// 9. OBJETIVE TYPE
 // ---------------------------------------------------------
 model GoalType {
   id        Int      @id @default(autoincrement())
@@ -179,7 +179,7 @@ model GoalType {
 }
 
 // ---------------------------------------------------------
-// 10. ALERTES
+// 10. ALERTS
 // ---------------------------------------------------------
 model AlertLog {
   id          Int      @id @default(autoincrement())

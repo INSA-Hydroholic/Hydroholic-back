@@ -35,13 +35,13 @@ class ColdStartRequest(BaseModel):
     height: float
     weight: float
     age: int
-    activity_level: int
+    gender_encoded: int
 
 class TrainingData(BaseModel):
     height: float
     weight: float
     age: int
-    activity_level: int
+    gender_encoded: int
     stable_hydration_target: float
 
 class TrainPersonasRequest(BaseModel):
@@ -225,7 +225,7 @@ def predict_cold_start(request: ColdStartRequest):
     personas = joblib.load(MODEL_PATH)
     scaler = joblib.load(SCALER_PATH)
     
-    features = [request.height, request.weight, request.age, request.activity_level]
+    features = [request.height, request.weight, request.age, request.gender_encoded]
     scaled_f = scaler.transform([features])[0]
     
     best_persona = None
@@ -253,7 +253,7 @@ def trigger_persona_training(request: TrainPersonasRequest):
         if len(df) < 10:
             raise HTTPException(status_code=400, detail="Not enough data for meaningful clustering. Need at least 10 users.")
             
-        feature_cols = ['height', 'weight', 'age', 'activity_level']
+        feature_cols = ['height', 'weight', 'age', 'gender_encoded']
         personas, scaler = train_user_personas(df, feature_cols)
         
         joblib.dump(personas, MODEL_PATH)

@@ -21,9 +21,9 @@ const createToken = (userId: number, username: string): string => {
 router.post('/register', async (req: Request, res: Response) => {
   try {
     // 1. get registration info from request body and validate
-    const { email, password, height, weight, age, gender, activityLevel } = req.body;
+    const { email, password, gender, birthDate, weight, height } = req.body;
 
-    if (!email || !password || !height || !weight || !age || !gender || !activityLevel) {
+    if (!email || !password || !height || !weight || !gender || !birthDate) {
       return res.status(400).json({ error: 'Missing required registration fields' });
     }
 
@@ -31,9 +31,12 @@ router.post('/register', async (req: Request, res: Response) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // 3. call ML service for cold-start prediction to get initial hydration target and persona assignment
+    const birthYear = new Date(birthDate).getFullYear();
+    const currentYear = new Date().getFullYear();
+    const age = currentYear - birthYear;
     let initialTarget = weight * 30;
     let assignedPersonaId = null;
-
+    const genderEncoded = gender.toLowerCase() === 'female' ? 1 : 0;
     try {
       // timeout set to 3 seconds to prevent blocking registration if ML service is slow/unavailable
       const mlResponse = await axios.post(
@@ -42,7 +45,7 @@ router.post('/register', async (req: Request, res: Response) => {
           height: height,
           weight: weight,
           age: age,
-          activity_level: activityLevel
+          gender_encoded: genderEncoded
         },
         { timeout: 3000 } 
       );
@@ -73,7 +76,7 @@ router.post('/register', async (req: Request, res: Response) => {
         height,
         weight,
         age,
-        activityLevel,
+        gender,
         hydrationSensitivity: 1.0,      
         dailyHydrationCoefficient: initialratio, 
       }

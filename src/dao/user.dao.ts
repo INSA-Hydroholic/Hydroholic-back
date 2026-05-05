@@ -6,7 +6,7 @@ export const UserDAO = {
     //create
     createUser: async (userData: Prisma.UserCreateInput) => {
         return await prisma.user.create({
-        data: userData 
+        data: userData
         });
     },
 
@@ -30,12 +30,14 @@ export const UserDAO = {
         data: dataToUpdate
         });
     },
+
     //delete
     deleteUser: async (userId: number) => {
         return await prisma.user.delete({
         where: { id: userId }
         });
     },
+
     updateDailyGoal: async (userId: number, newGoal: number) => {
         return await prisma.user.update({
         where: { id: userId },
@@ -43,4 +45,5 @@ export const UserDAO = {
         });
     }
 
+    
 };

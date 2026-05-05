@@ -7,10 +7,10 @@ import { prisma } from '../lib/prisma';
 // Route for an ESP to register itself
 router.post('/register', async (req, res) => {
     try {
-        const { mac } = req.body;
-        if (!mac) return res.status(400).json({ message: 'MAC Address required' });
+        const { deviceID } = req.body;
+        if (!deviceID) return res.status(400).json({ message: 'Device ID required' });
 
-        const device = await DeviceDAO.register(mac);
+        const device = await DeviceDAO.register(deviceID);
         res.status(201).json({ message: 'Device registered', device });
     } catch (error) {
         res.status(500).json({ message: 'Error during registration' });
@@ -19,20 +19,20 @@ router.post('/register', async (req, res) => {
 
 // Main service: ESP posts its measures
 // POST/api/device/measure
-router.post('/:mac/logs', async (req, res) => {
+router.post('/:deviceID/logs', async (req, res) => {
     try {
-        const { mac } = req.params;
+        const { deviceID } = req.params;
         const { weight, time, stable } = req.body;
 
-        if (weight === undefined || mac === undefined) {
-            return res.status(400).json({ message: 'Incomplete data: weight or mac missing' });
+        if (weight === undefined || deviceID === undefined) {
+            return res.status(400).json({ message: 'Incomplete data: weight or deviceID missing' });
         }
         if (time === undefined) {
             console.warn("Time missing in ESP32 payload. Defaulting to server time.");
         }
-        
-        // Recover userId and deviceId based on the MAC address of the ESP
-        const device = await DeviceDAO.findUserByMac(mac);
+
+        // Recover userId and deviceId based on the Device ID of the ESP
+        const device = await DeviceDAO.findUserByMac(deviceID);
 
         if (!device) {
             return res.status(404).json({ message: 'Couldn\'t find device' });
@@ -45,7 +45,7 @@ router.post('/:mac/logs', async (req, res) => {
         const newLog = await DeviceDAO.createMeasure({
             weight: parseFloat(weight),
             userID: device.user.id,
-            source: `ESP32_WiFi_${mac}`,
+            source: `ESP32_WiFi_${deviceID}`,
             measured_at: time ? new Date(parseInt(time) * 1000) : undefined
         });
 

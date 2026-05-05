@@ -75,6 +75,7 @@ router.get('/ranking/all', async (req, res) => {
   res.json(fullRanking);
 });
 
+// endpoint used to manually add water and for the BLE device
 router.post('/:userId/water', authMiddleware, async (req: any, res: any) => {
   try {
     const userIdFromUrl = parseInt(req.params.userId);
@@ -98,7 +99,7 @@ router.post('/:userId/water', authMiddleware, async (req: any, res: any) => {
       measured_at: measured_at
     });
     console.log(`New hydration log for user ${userIdFromUrl}: ${weight}g from source ${source} at ${measured_at}`);
-    res.json({ message: 'Log ajoutée avec succès', data: newLog });
+    res.json({ message: 'Successfully added hydration log', data: newLog });
 
   } catch (error) {
     console.error(`Error logging water for user ${req.params.userId}:`, error);
@@ -142,6 +143,7 @@ router.get('/:userId/recommendations', (req, res) => {
   res.json(recommendations);
 });
 
+// calculate the goal for a given user
 router.post('/:userId/goal/calculate', authMiddleware, async (req: any, res: any) => {
   try {
     const userId = parseInt(req.params.userId);
@@ -175,5 +177,103 @@ router.post('/:userId/goal/calculate', authMiddleware, async (req: any, res: any
     res.status(500).json({ message: "Erreur lors du calcul de l'objectif" });
   }
 });
+
+// add a nurse
+// can only be called by an admin of the same organization
+router.post('/addUser/nurse', authMiddleware, async (req: any, res: any) => {
+  try {
+    const { username, email, password } = req.body;
+
+    // We retrieve the user ID from the JWT token
+    const requestingUserID = req.user?.sub;
+    if (!requestingUserID) return res.status(401).json({ message: "Unauthorized request" });
+
+    // Get the user from DB and check if they have the required permissions
+    const user = await UserDAO.getUserById(requestingUserID);
+
+    if (!user || user.role !== "ADMIN") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    // Create the new nurse user
+    const newNurse = await UserDAO.createUser({
+      username,
+      email,
+      password_hash: password,
+      role: "NURSE",
+      organizationId: user.organizationId
+    });
+
+    res.status(201).json({ message: "Nurse added successfully", user: newNurse });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error adding nurse" });
+  }
+});
+
+// add a resident
+// can only be called by an admin or nurse of the same organization
+router.post('/addUser/resident', authMiddleware, async (req: any, res: any) => {
+  try {
+    const { username, email, password } = req.body;
+
+    // We retrieve the user ID from the JWT token
+    const requestingUserID = req.user?.sub;
+    if (!requestingUserID) return res.status(401).json({ message: "Unauthorized request" });
+
+    // Check if the user is an admin or nurse of the same organization
+    const user = await UserDAO.getUserById(requestingUserID);
+    if (!user || (user.role !== "ADMIN" && user.role !== "NURSE")) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    // Create the new resident user
+    const newResident = await UserDAO.createUser({
+      username,
+      email,
+      password_hash: password,
+      role: "RESIDENT",
+      organizationId: user.organizationId
+    });
+
+    res.status(201).json({ message: "Resident added successfully", user: newResident });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error adding resident" });
+  }
+});
+
+
+// remove a nurse or resident
+// can only be called by an admin of the same organization
+router.delete('/deleteUser/:userId', authMiddleware, async (req: any, res: any) => {
+  try {
+    // We retrieve the user ID from the JWT token
+    const requestingUserID = req.user?.sub;
+    if (!requestingUserID) return res.status(401).json({ message: "Unauthorized request" });
+
+
+    const requestingUser = await UserDAO.getUserById(requestingUserID);
+    const userToDelete = await UserDAO.getUserById(parseInt(req.params.userId));
+
+    // Check if the user is an admin
+    if (!requestingUser || requestingUser.role !== "ADMIN") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    if (userToDelete?.organizationId !== requestingUser.organizationId) {
+      return res.status(403).json({ message: "You can only delete users from your organization" });
+    }
+
+    // Delete requested user
+    await UserDAO.deleteUser(req.params.userId);
+
+    res.json({ message: "User deleted successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error deleting user" });
+  }
+});
+
 
 export default router;

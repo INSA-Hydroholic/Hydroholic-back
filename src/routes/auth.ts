@@ -17,13 +17,13 @@ const createToken = (userId: number, username: string): string => {
 router.post('/register', async (req, res) => {
   try {
     const { 
-      username, 
-      password, 
-      orgName, 
-      adminAddress, 
-      adminName, 
-      adminFirstName, 
-      adminEmail 
+      username,
+      password,
+      orgName,
+      adminAddress,
+      adminName,
+      adminFirstName,
+      adminEmail
     } = req.body;
 
     // We use a transaction to create both entities

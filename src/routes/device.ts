@@ -79,13 +79,14 @@ router.post('/:deviceID/logs', async (req, res) => {
     }
 });
 
-router.post('/:mac/status', async (req, res) => {
+// Post battery status
+router.post('/:deviceID/status', async (req, res) => {
     try {
-        const { mac } = req.params;
+        const { deviceID } = req.params;
         const { battery, time } = req.body;
 
         const date = time ? new Date(parseInt(time) * 1000) : new Date();
-        await DeviceDAO.updateBattery(mac, parseInt(battery), date);
+        await DeviceDAO.updateBattery(deviceID, parseInt(battery), date);
 
         res.json({ message: 'Battery status updated' });
     } catch (error) {

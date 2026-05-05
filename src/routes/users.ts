@@ -1,12 +1,13 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { UserDAO } from '../dao/user.dao';
 import { HydrationDAO } from '../dao/hydration.dao';
 import { authMiddleware } from '../middlewares/auth.middleware';
-
-const router = Router();
 import { prisma } from '../lib/prisma';
 import { HydrationService } from '../service/hydration.service';
+import alerts from './alerts';
+
+const router = Router();
+
 
 // get all users
 router.get('/', async (req, res) => {
@@ -275,5 +276,32 @@ router.delete('/deleteUser/:userId', authMiddleware, async (req: any, res: any) 
   }
 });
 
+const DRINK_THRESHOLD = 5; // ml minimum expected for a sip
+router.get('/:userId/alerts', async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId);
+    const now = new Date();
+
+    const { evaluated_time } = req.query;
+    const startTime = new Date(evaluated_time as string);
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, surname: true, daily_goal: true }
+    });
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const consumed = await HydrationDAO.getTotalConsumedByRange(userId, startTime, now);
+
+    const shouldBeep = consumed < DRINK_THRESHOLD;
+
+    res.json({ shouldBeep });
+
+  } catch (error) {
+    console.error('Alert analysis error:', error);
+    res.status(500).json({ message: `Server error: ${error}` });
+  }
+});
 
 export default router;

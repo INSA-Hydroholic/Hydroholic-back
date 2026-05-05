@@ -53,8 +53,8 @@ export const HydrationDAO = {
             orderBy: { measured_at: 'asc' }
         });
         /**
-         * Weights are stored in grams and contain load cell drifting errors, 
-         * so we need to apply a correction factor to get a more accurate estimate 
+         * Weights are stored in grams and contain load cell drifting errors,
+         * so we need to apply a correction factor to get a more accurate estimate
          * of the actual water volume consumed.
          */
         const minRateDelta = 5; // Minimum weight change (per minute) in grams to consider as actual water intake - derived from empirical observations of the device's noise level
@@ -88,5 +88,5 @@ export const HydrationDAO = {
         id: logId
       }
     });
-  }
+    }
 };

@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { ChallengeDAO } from '../dao/challenge.dao';
 import { ChallengeParticipantDAO } from '../dao/participant.dao';
+import { prisma } from '../lib/prisma';
 
 const router = Router();
-import { prisma } from '../lib/prisma';
 
 // get all challenges
 router.get('/', async (req, res) => {

@@ -1,14 +1,35 @@
 import { Router } from 'express';
 import { DeviceDAO } from '../dao/device.dao';
+import { prisma } from '../lib/prisma';
 
 const router = Router();
-import { prisma } from '../lib/prisma';
+const connectionCodes: { [establishmentID: string]: string } = {};
+
+function getConnectionCode(establishmentID: string): string {
+    if (!connectionCodes[establishmentID]) {
+        // Generate a random 6-digit code
+        connectionCodes[establishmentID] = Math.floor(100000 + Math.random() * 900000).toString();
+    }
+    return connectionCodes[establishmentID];
+}
 
 // Route for an ESP to register itself
 router.post('/register', async (req, res) => {
     try {
-        const { deviceID } = req.body;
+        const { deviceID, connectionCode } = req.body;
         if (!deviceID) return res.status(400).json({ message: 'Device ID required' });
+        // TODO : Connection code is optional for now, make compulsory when firmware supports it
+        if (!connectionCode) return console.warn({ message: 'Connection code required' });
+
+        // Check if connection code exists and matches
+        if (connectionCode && !Object.values(connectionCodes).includes(connectionCode)) {
+            return res.status(400).json({ message: 'Invalid connection code' });
+        } else if (connectionCode) {
+            // If connection code is valid, we can delete it to prevent reuse
+            const Id = Object.keys(connectionCodes).find(key => connectionCodes[key] === connectionCode);
+            if (Id) delete connectionCodes[Id];
+        }
+
 
         const device = await DeviceDAO.register(deviceID);
         res.status(201).json({ message: 'Device registered', device });
@@ -22,6 +43,7 @@ router.post('/register', async (req, res) => {
 router.post('/:deviceID/logs', async (req, res) => {
     try {
         const { deviceID } = req.params;
+        //changer en CSV
         const { weight, time, stable } = req.body;
 
         if (weight === undefined || deviceID === undefined) {
@@ -70,5 +92,18 @@ router.post('/:mac/status', async (req, res) => {
         res.status(500).json({ message: 'Error while updating battery status' });
     }
 });
+
+// Get the connection code for a given establishment. Called by the Frontend
+router.get('/connectionCode', async (req, res) => {
+    const { establishmentID } = req.body;
+
+    if (!establishmentID) {
+        return res.status(400).json({ message: 'Establishment ID required' });
+    }
+
+    const connectionCode = getConnectionCode(establishmentID);
+    res.json({ connectionCode });
+});
+
 
 export default router;

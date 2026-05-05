@@ -113,6 +113,21 @@ router.post('/:deviceID/status', async (req, res) => {
     }
 });
 
+// Called by ESP
+// Retrieve the UserID associated with a DeviceID
+router.get('/:deviceID/user', async (req, res) => {
+    try {
+        const { deviceID } = req.params;
+        const device = await DeviceDAO.findUserByMac(deviceID);
+        if (!device) {
+            return res.status(404).json({ message: 'Device not found' });
+        }
+        res.json(device.user.id);
+    } catch (error) {
+        res.status(500).json({ message: 'Error while fetching user' });
+    }
+});
+
 // Called by the Frontend
 // Get the connection code for a given establishment.
 router.get('/connectionCode', async (req, res) => {
@@ -128,7 +143,7 @@ router.get('/connectionCode', async (req, res) => {
 
 // Called by Frontend
 // Get the list of devices for a given establishment.
-router.get('/devicesListByEstablishment/:establishmentID', async (req, res) => {
+router.get('/:establishmentID/listDevices', async (req, res) => {
     try {
         const { establishmentID } = req.params;
         const devices = await DeviceDAO.findDevicesByEstablishment(parseInt(establishmentID));
@@ -137,6 +152,5 @@ router.get('/devicesListByEstablishment/:establishmentID', async (req, res) => {
         res.status(500).json({ message: 'Error while fetching devices' });
     }
 });
-
 
 export default router;

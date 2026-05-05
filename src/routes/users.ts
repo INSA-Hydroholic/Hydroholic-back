@@ -15,8 +15,8 @@ router.get('/', async (req, res) => {
       where: {
         role: "RESIDENT"
       },
-      select: { 
-        id: true,
+      select: {
+      id: true,
       username: true,
       email: true,
       surname: true,

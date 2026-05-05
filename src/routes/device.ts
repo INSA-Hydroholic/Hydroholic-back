@@ -43,14 +43,14 @@ router.post('/register', async (req, res) => {
 router.post('/:deviceID/logs', async (req, res) => {
     try {
         const { deviceID } = req.params;
-        //changer en CSV
-        const { weight, time, stable } = req.body;
+        const csvData = req.body; // " ( time,weight,stable\n )+"
 
-        if (weight === undefined || deviceID === undefined) {
-            return res.status(400).json({ message: 'Incomplete data: weight or deviceID missing' });
+        if (!csvData || typeof csvData !== 'string') {
+            return res.status(400).json({ message: 'Incorrect CSV data' });
         }
-        if (time === undefined) {
-            console.warn("Time missing in ESP32 payload. Defaulting to server time.");
+
+        if(!deviceID) {
+            return res.status(400).json({ message: 'Device ID is required in the URL' });
         }
 
         // Recover userId and deviceId based on the Device ID of the ESP
@@ -63,15 +63,33 @@ router.post('/:deviceID/logs', async (req, res) => {
             return res.status(404).json({ message: 'Device found but no associated user' });
         }
 
-        // Create a new Hydration Log object
-        const newLog = await DeviceDAO.createMeasure({
+        const lines = csvData.trim().split('\n');
+        
+        // Basic validation of CSV data
+        for (const line of lines) {
+        const [epoch, weight, stable] = line.split(',');
+        if (weight === undefined) {
+            return res.status(400).json({ message: 'Incomplete data: weight missing' });
+        }
+        if (epoch === undefined) {
+            console.warn("Time missing, defaulting to server time.");
+        }
+        }
+
+        // If all data is ok, create measures in the database using Promise to optimize
+        const creationPromises = lines.map(line => {
+        const [epoch, weight, stable] = line.split(',');
+        return DeviceDAO.createMeasure({
             weight: parseFloat(weight),
-            userID: device.user.id,
+            userID: device.user!.id,
             source: `ESP32_WiFi_${deviceID}`,
-            measured_at: time ? new Date(parseInt(time) * 1000) : undefined
+            measured_at: epoch ? new Date(parseInt(epoch) * 1000) : undefined
+        });
         });
 
-        res.status(201).json({ status: 'success', data: newLog });
+        await Promise.all(creationPromises);
+
+        res.status(201).send("Successfully logged all CSV data");
 
     } catch (error) {
         console.error("Error with measure endpoint:", error);

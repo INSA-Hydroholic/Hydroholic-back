@@ -40,4 +40,11 @@ export const DeviceDAO = {
         }
     });
     },
-}
+
+    async findDevicesByEstablishment(establishmentID: number) {
+        return await prisma.device.findMany({
+            where: { establishmentID },
+            include: { user: { select: { id: true, username: true } } }
+        });
+    }
+};

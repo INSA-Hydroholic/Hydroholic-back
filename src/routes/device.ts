@@ -19,7 +19,7 @@ router.post('/register', async (req, res) => {
         const { deviceID, connectionCode } = req.body;
         if (!deviceID) return res.status(400).json({ message: 'Device ID required' });
         // TODO : Connection code is optional for now, make compulsory when firmware supports it
-        if (!connectionCode) return console.warn({ message: 'Connection code required' });
+        if (!connectionCode) console.warn({ message: 'Connection code required' });
 
         // Check if connection code exists and matches
         if (connectionCode && !Object.values(connectionCodes).includes(connectionCode)) {
@@ -79,6 +79,7 @@ router.post('/:deviceID/logs', async (req, res) => {
     }
 });
 
+// Called by ESP
 // Post battery status
 router.post('/:deviceID/status', async (req, res) => {
     try {
@@ -94,7 +95,7 @@ router.post('/:deviceID/status', async (req, res) => {
     }
 });
 
-// Get the connection code for a given establishment. Called by the Frontend
+// Called by the Frontend. Get the connection code for a given establishment.
 router.get('/connectionCode', async (req, res) => {
     const { establishmentID } = req.body;
 
@@ -104,6 +105,17 @@ router.get('/connectionCode', async (req, res) => {
 
     const connectionCode = getConnectionCode(establishmentID);
     res.json({ connectionCode });
+});
+
+// Get the list of devices for a given establishment.
+router.get('/devicesListByEstablishment/:establishmentID', async (req, res) => {
+    try {
+        const { establishmentID } = req.params;
+        const devices = DeviceDAO.findDevicesByEstablishment(establishmentID);
+        res.json(devices);
+    } catch (error) {
+        res.status(500).json({ message: 'Error while fetching devices' });
+    }
 });
 
 

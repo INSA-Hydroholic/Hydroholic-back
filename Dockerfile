@@ -4,8 +4,9 @@ WORKDIR /app
 
 # Install npm dependencies first to leverage Docker caching
 COPY package.json ./
+COPY package-lock.json ./
 
-RUN npm install
+RUN npm ci
 
 # Then, generate Prisma client
 COPY ./prisma/schema.prisma ./prisma/

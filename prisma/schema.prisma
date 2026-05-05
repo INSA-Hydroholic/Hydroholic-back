@@ -28,6 +28,7 @@ model User {
   num_moderate_activities Int           @default(0)
   biography               String?       @db.Text
   daily_goal              Int           @default(2000)
+  room                    String?
   role                    String        @default("USER")
   
   // Relation 1-1 avec Device (ESP32)

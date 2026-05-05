@@ -78,6 +78,7 @@ async function main() {
   const yvette = await prisma.user.create({
     data: {
       username: "yvette_moreau", email: "yvette.moreau@residence-test.fr",
+      room : "101",
       password_hash: "resident-placeholder", role: "RESIDENT",
       name: "Yvette", surname: "Moreau",
       age: 82, weight: 58.0, sex: "F", daily_goal: 1500,
@@ -97,6 +98,7 @@ async function main() {
     data: {
       username: "m_fontaine", email: "marguerite.fontaine@residence-test.fr",
       password_hash: "resident-placeholder", role: "RESIDENT",
+      room : "102",
       name: "Marguerite", surname: "Fontaine",
       age: 78, weight: 63.5, sex: "F", daily_goal: 2000,
       esp32Id: esp2.id, organizationId: org.id,
@@ -118,6 +120,7 @@ async function main() {
     data: {
       username: "roger_blanche", email: "roger.blanche@residence-test.fr",
       password_hash: "resident-placeholder", role: "RESIDENT",
+      room : "103",
       name: "Roger", surname: "Blanche",
       age: 85, weight: 72.0, sex: "M", daily_goal: 1800,
       esp32Id: esp3.id, organizationId: org.id,

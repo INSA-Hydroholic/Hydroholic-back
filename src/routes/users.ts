@@ -12,12 +12,16 @@ import { HydrationService } from '../service/hydration.service';
 router.get('/', async (req, res) => {
   try {
     const users = await prisma.user.findMany({
+      where: {
+        role: "RESIDENT"
+      },
       select: { 
         id: true,
       username: true,
       email: true,
       surname: true,
       name: true,
+      room : true,
       daily_goal: true,
       esp32Id: true,
       role: true,

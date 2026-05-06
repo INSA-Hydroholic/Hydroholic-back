@@ -3,11 +3,11 @@ import { prisma } from '../lib/prisma';
 
 export const DeviceDAO = {
 
-    async register(mac: string) {
+    async register(mac: string, organizationId?: number) {
     return await prisma.device.upsert({
         where: { macAddress: mac },
-        update: {},
-        create: { macAddress: mac }
+        update: { organizationId: organizationId },
+        create: { macAddress: mac, organizationId: organizationId }
     });
     },
 

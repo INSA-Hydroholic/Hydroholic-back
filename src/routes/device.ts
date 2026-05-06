@@ -130,8 +130,8 @@ router.get('/:deviceID/user', async (req, res) => {
 
 // Called by the Frontend
 // Get the connection code for a given establishment.
-router.get('/connectionCode', async (req, res) => {
-    const { establishmentID } = req.body;
+router.get('/:establishmentID/connectionCode', async (req, res) => {
+    const { establishmentID } = req.params;
 
     if (!establishmentID) {
         return res.status(400).json({ message: 'Establishment ID required' });

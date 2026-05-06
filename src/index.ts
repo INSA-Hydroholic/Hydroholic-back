@@ -16,6 +16,7 @@ const app = express();
 // 1. middlewares globaux
 app.use(cors()); // autoriser les requêtes cross-origin (du front qui tourne sur un autre port)
 app.use(express.json()); // let server understand JSON payloads
+app.use(express.text({ type: 'text/csv'})); // let server understand raw text payloads (for CSV data)
 
 // Log every request (for debugging)
 app.use((req, res, next) => {

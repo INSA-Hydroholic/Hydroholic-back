@@ -30,6 +30,11 @@ router.post('/register', async (req, res) => {
             if (Id) delete connectionCodes[Id];
         }
 
+        // Check if device already exists        
+        const existingDevice = await prisma.device.findUnique({ where: { macAddress: deviceID } });
+        if (existingDevice) {
+            return res.status(200).json({ message: 'Device already registered', device: existingDevice });
+        }
 
         const device = await DeviceDAO.register(deviceID);
         res.status(201).json({ message: 'Device registered', device });
@@ -44,7 +49,7 @@ router.post('/:deviceID/logs', async (req, res) => {
     try {
         const { deviceID } = req.params;
         const csvData = req.body; // " ( time,weight,stable\n )+"
-
+        
         if (!csvData || typeof csvData !== 'string') {
             return res.status(400).json({ message: 'Incorrect CSV data' });
         }
@@ -121,6 +126,9 @@ router.get('/:deviceID/user', async (req, res) => {
         const device = await DeviceDAO.findUserByMac(deviceID);
         if (!device) {
             return res.status(404).json({ message: 'Device not found' });
+        }
+        if (!device.user) {
+            return res.status(404).json({ message: 'Device found but no associated user' });
         }
         res.json(device.user.id);
     } catch (error) {

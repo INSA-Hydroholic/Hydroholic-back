@@ -12,6 +12,18 @@ const router = Router();
 // get all users
 router.get('/', async (req, res) => {
   try {
+
+    const { filter, organizationId } = req.query;
+    const where: any = {};
+    if (filter) where.role = filter;
+    if (organizationId) where.organizationId = parseInt(organizationId as string);
+
+
+    
+    if(filter === 'RESIDENTS'){
+
+    }
+
     const users = await prisma.user.findMany({
       select: {
       id: true,
@@ -35,6 +47,31 @@ router.get('/', async (req, res) => {
   }
 });
 
+// get all users
+router.get('/', async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+      id: true,
+      username: true,
+      email: true,
+      surname: true,
+      name: true,
+      room : true,
+      daily_goal: true,
+      esp32Id: true,
+      role: true,
+      organizationId: true,
+      age: true,
+      weight: true,
+      sex: true,
+      }
+    });
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: `Server error: ${error}` });
+  }
+});
 // get user by id
 router.get('/:userId', async (req, res) => {
   try {
@@ -180,7 +217,7 @@ router.post('/:userId/goal/calculate', authMiddleware, async (req: any, res: any
 // can only be called by an admin of the same organization
 router.post('/addUser/nurse', authMiddleware, async (req: any, res: any) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, email, password, first_name, surname } = req.body;
 
     // We retrieve the user ID from the JWT token
     const requestingUserID = req.user?.sub;
@@ -189,7 +226,7 @@ router.post('/addUser/nurse', authMiddleware, async (req: any, res: any) => {
     // Get the user from DB and check if they have the required permissions
     const user = await UserDAO.getUserById(requestingUserID);
 
-    if (!user || user.role !== "ADMIN") {
+    if (!user || user.role !== "ADMIN" && user.role !== "STAFF") {
       return res.status(403).json({ message: "Access denied" });
     }
 
@@ -197,6 +234,8 @@ router.post('/addUser/nurse', authMiddleware, async (req: any, res: any) => {
     const newNurse = await UserDAO.createUser({
       username,
       email,
+      name: first_name,
+      surname,
       password_hash: password,
       role: "NURSE",
       organizationId: user.organizationId
@@ -213,7 +252,7 @@ router.post('/addUser/nurse', authMiddleware, async (req: any, res: any) => {
 // can only be called by an admin or nurse of the same organization
 router.post('/addUser/resident', authMiddleware, async (req: any, res: any) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, email, password, first_name, surname } = req.body;
 
     // We retrieve the user ID from the JWT token
     const requestingUserID = req.user?.sub;
@@ -221,7 +260,7 @@ router.post('/addUser/resident', authMiddleware, async (req: any, res: any) => {
 
     // Check if the user is an admin or nurse of the same organization
     const user = await UserDAO.getUserById(requestingUserID);
-    if (!user || (user.role !== "ADMIN" && user.role !== "NURSE")) {
+    if (!user || (user.role !== "ADMIN" && user.role !== "NURSE" && user.role !== "STAFF")) {
       return res.status(403).json({ message: "Access denied" });
     }
 
@@ -230,6 +269,8 @@ router.post('/addUser/resident', authMiddleware, async (req: any, res: any) => {
       username,
       email,
       password_hash: password,
+      name: first_name,
+      surname,
       role: "RESIDENT",
       organizationId: user.organizationId
     });

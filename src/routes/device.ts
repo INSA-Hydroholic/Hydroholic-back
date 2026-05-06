@@ -43,7 +43,7 @@ router.post('/register', async (req, res) => {
             return res.status(200).json({ message: 'Device already registered', device: existingDevice });
         }
 
-        const device = await DeviceDAO.register(deviceID, Id ? parseInt(Id) : undefined);
+        const device = await DeviceDAO.register(deviceID);
         res.status(201).json({ message: 'Device registered', device });
     } catch (error) {
         res.status(500).json({ message: 'Error during registration' });

@@ -34,8 +34,8 @@ export const DeviceDAO = {
     return await prisma.device.update({
         where: { macAddress: mac },
         data: {
-        measuredWeight: level,
-        weightMeasuredAt: timestamp || new Date()
+        lastMeasuredWeight: level,
+        payloadSentAt: timestamp || new Date()
         }
     });
     },

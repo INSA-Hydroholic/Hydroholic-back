@@ -323,12 +323,13 @@ router.get('/:userId/alerts', async (req, res) => {
 router.post('/:userId/:deviceId/bindDevice', async (req, res) => {
   // check if in use
   const { userId, deviceId } = req.params;
-  const user = await DeviceDAO.findUserByMac(deviceId);
-  if (user) {
+  const targetUserId = parseInt(userId);
+  const result = await DeviceDAO.findUserByMac(deviceId);
+  if (result && result.user) {
     return res.status(400).json({ message: 'Device already in use' });
   }
 
-  await DeviceDAO.bindUserToDevice(userId, deviceId);
+  await DeviceDAO.bindUserToDevice(targetUserId, deviceId);
   res.json({ message: 'Device successfully bound to user' });
 
 });
@@ -339,7 +340,6 @@ router.post('/:userId/:deviceId/unbindDevice', async (req, res) => {
   const targetUserId = parseInt(userId);
 
   const result = await DeviceDAO.findUserByMac(deviceId);
-  console.log('Unbinding device', deviceId, 'from user', userId, 'Found user:', result);
   if (!result.user) {
     return res.status(400).json({ message: 'Device not bound to any user' });
   }
@@ -348,7 +348,7 @@ router.post('/:userId/:deviceId/unbindDevice', async (req, res) => {
   }
 
 
-  await DeviceDAO.unbindUserFromDevice(userId, deviceId);
+  await DeviceDAO.unbindUserFromDevice(targetUserId, deviceId);
   res.json({ message: 'Device successfully unbound from user' });
 
 });

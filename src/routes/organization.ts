@@ -68,7 +68,7 @@ try {
                 alertsToCreate.push({
                     userId: user.id,
                     severity: 'YELLOW',
-                    message: `Jhouny hasn't drunk in the last minute — you're not a true hydroholic.`
+                    message: `Jhouny n'a pas bu dans la dernière minute — il n'est pas un vrai Hydroholic.`
                 });
             }
             else {
@@ -85,14 +85,14 @@ try {
         alertsToCreate.push({
             userId: user.id,
             severity: 'RED',
-            message: `${user.surname} hasn't drunk in the last 6 hours — intervention recommended.`
+            message: `${user.surname} n'a pas bu dans les dernières 6 heures — intervention recommandée.`
         });
         // Rule 2 - Nothing drunk in last 3h
         } else if (consumed3h < DRINK_THRESHOLD_3H) {
         alertsToCreate.push({
             userId: user.id,
             severity: 'YELLOW',
-            message: `${user.surname} hasn't drunk in the last 3 hours — monitoring recommended.`
+            message: `${user.surname} n'a pas bu dans les dernières 3 heures — surveillance recommandée.`
         });
         }
 
@@ -101,7 +101,7 @@ try {
         alertsToCreate.push({
             userId: user.id,
             severity: 'YELLOW',
-            message: `${user.surname} — is below 1/3 of daily goal, only ${Math.round(consumedToday)}ml consumed.`
+            message: `${user.surname} — est en dessous de 1/3 de son objectif quotidien, seulement ${Math.round(consumedToday)}ml consommés.`
         });
         }
 
@@ -110,7 +110,7 @@ try {
         alertsToCreate.push({
             userId: user.id,
             severity: 'YELLOW',
-            message: `${user.surname} — is below half of daily goal, only ${Math.round(consumedToday)}ml consumed.`
+            message: `${user.surname} — est en dessous de la moitié de son objectif quotidien, seulement ${Math.round(consumedToday)}ml consommés.`
         });
         }
 
@@ -127,13 +127,18 @@ try {
                 alertsToCreate.push({
                     userId: user.id,
                     severity: 'GREY',
-                    message: `Device ${user.esp32.id} is disconnected. Last update was at ${user.esp32.weightMeasuredAt}.`
+                    message: `Device ${user.esp32.id} est déconnecté. Dernière mise à jour à ${user.esp32.weightMeasuredAt}.`
                 });
             } else if (secondsSinceBattery > 30) {
+                let time = user.esp32.batteryMeasuredAt;
+                if (!time)
+                {
+                    time = "sa première connexion";
+                }
                 alertsToCreate.push({
                     userId: user.id,
                     severity: 'GREY',
-                    message: `Device ${user.esp32.id} hasn't sent battery since ${user.esp32.batteryMeasuredAt}. It might have no battery.`
+                    message: `Device ${user.esp32.id} n'a pas envoyé de données de batterie depuis ${time}. Il pourrait ne plus avoir de batterie.`
                 });
             }
         }

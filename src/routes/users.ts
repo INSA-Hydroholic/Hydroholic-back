@@ -13,9 +13,6 @@ const router = Router();
 router.get('/', async (req, res) => {
   try {
     const users = await prisma.user.findMany({
-      where: {
-        role: "RESIDENT"
-      },
       select: {
       id: true,
       username: true,
@@ -283,7 +280,11 @@ router.get('/:userId/alerts', async (req, res) => {
     const now = new Date();
 
     const { evaluated_time } = req.query;
-    const startTime = new Date(evaluated_time as string);
+    const startTime = new Date();
+    if (evaluated_time) {
+      // Offset current time by the evaluated_time (in minutes) to get the start time for the analysis
+      startTime.setMinutes(now.getMinutes() - parseInt(evaluated_time as string));
+    }
 
     const user = await prisma.user.findUnique({
       where: { id: userId },

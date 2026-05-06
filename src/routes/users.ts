@@ -19,12 +19,8 @@ router.get('/', async (req, res) => {
     if (organizationId) where.organizationId = parseInt(organizationId as string);
 
 
-    
-    if(filter === 'RESIDENTS'){
-
-    }
-
     const users = await prisma.user.findMany({
+      where,
       select: {
       id: true,
       username: true,
@@ -47,31 +43,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// get all users
-router.get('/', async (req, res) => {
-  try {
-    const users = await prisma.user.findMany({
-      select: {
-      id: true,
-      username: true,
-      email: true,
-      surname: true,
-      name: true,
-      room : true,
-      daily_goal: true,
-      esp32Id: true,
-      role: true,
-      organizationId: true,
-      age: true,
-      weight: true,
-      sex: true,
-      }
-    });
-    res.json(users);
-  } catch (error) {
-    res.status(500).json({ message: `Server error: ${error}` });
-  }
-});
 // get user by id
 router.get('/:userId', async (req, res) => {
   try {
@@ -281,7 +252,6 @@ router.post('/addUser/resident', authMiddleware, async (req: any, res: any) => {
     res.status(500).json({ message: "Error adding resident" });
   }
 });
-
 
 // remove a nurse or resident
 // can only be called by an admin of the same organization

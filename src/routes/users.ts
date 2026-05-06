@@ -284,6 +284,8 @@ router.delete('/deleteUser/:userId', authMiddleware, async (req: any, res: any) 
   }
 });
 
+// Called by the ESP
+// Returns a boolean of whether the ESP should beep or not
 const DRINK_THRESHOLD = 5; // ml minimum expected for a sip
 router.get('/:userId/alerts', async (req, res) => {
   try {

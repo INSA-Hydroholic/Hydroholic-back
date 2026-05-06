@@ -11,6 +11,7 @@ const DRINK_THRESHOLD_3H = 50; // ml minimum expected in last 3h
 const DRINK_THRESHOLD_6H = 50; // ml minimum expected in last 6h
 
 // Calculate if alerts exist for a given user and sends them directly (no storing in DataBase)
+// The user MUST have an ESP32 associated
 // 4 types of alerts :
 // - Not drinking for more than 3 hours (Yellow)
 // - Not drinking for more than 6 hours (Red)
@@ -24,12 +25,25 @@ try {
     const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000);
     const hour = new Date().getHours();
 
+    const demoTime = new Date(now.getTime() - 60*1000); // For demo purposes, we set "now" to 1 minute ago, to trigger the 3h alert quickly
+
     const users = await prisma.user.findMany({
         where: {
             esp32Id: { not: null },
             organizationId: parseInt(req.params.establishmentId)
         },
-        select: {id: true, surname: true, daily_goal: true,}
+        select: {
+            id: true,
+            surname: true,
+            daily_goal: true,
+            esp32: {
+                select: {
+                    id: true,
+                    batteryMeasuredAt: true,
+                    updated_at: true,
+                }
+            }
+        }
     });
 
     const alertsToCreate = [];
@@ -41,6 +55,25 @@ try {
             HydrationDAO.getTotalConsumedByRange(user.id, sixHoursAgo, now),
             HydrationDAO.getTotalConsumedByRange(user.id, startOfDay, now)
         ]);
+
+        const demoConsumption = await HydrationDAO.getTotalConsumedByRange(user.id, demoTime, now);
+
+        if (demoConsumption < DRINK_THRESHOLD_3H) {
+            if (user.name === 'Jhouny') {
+                alertsToCreate.push({
+                    userId: user.id,
+                    severity: 'YELLOW',
+                    message: `$Jhouny hasn't drunk in the last minute — you're not a true hydroholic.`
+                });
+            }
+            else {
+                alertsToCreate.push({
+                    userId: user.id,
+                    severity: 'YELLOW',
+                    message: `${user.surname} hasn't drunk in the last 1 minute — monitoring recommended.`
+                });
+            }
+        }
 
       // Rule 1 - Below threshold in last 6h
         if (consumed6h < DRINK_THRESHOLD_6H) {

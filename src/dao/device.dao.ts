@@ -3,17 +3,6 @@ import { prisma } from '../lib/prisma';
 
 export const DeviceDAO = {
 
-    async createMeasure(data: { weight: number; userID: number; source: string; measured_at?: Date }) {
-        return await prisma.hydrationLog.create({
-            data: {
-                weight: data.weight,
-                userID: data.userID,
-                source: data.source,
-                measured_at: data.measured_at || new Date(),
-            }
-        });
-    },
-
     async register(mac: string) {
     return await prisma.device.upsert({
         where: { macAddress: mac },
@@ -37,6 +26,16 @@ export const DeviceDAO = {
         data: {
         batteryLevel: level,
         batteryMeasuredAt: timestamp || new Date()
+        }
+    });
+    },
+
+    async updateWeight(mac: string, level: number, timestamp?: Date) {
+    return await prisma.device.update({
+        where: { macAddress: mac },
+        data: {
+        measuredWeight: level,
+        weightMeasuredAt: timestamp || new Date()
         }
     });
     },

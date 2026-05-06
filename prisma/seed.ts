@@ -77,10 +77,10 @@ async function main() {
   // ── Yvette : objectif ATTEINT (goal 1500, 1600 consumed) ──
   const yvette = await prisma.user.create({
     data: {
-      username: "yvette_moreau", email: "yvette.moreau@residence-test.fr",
+      username: "jhouny_minettinho", email: "jhony.gato@lindao.fr",
       room : "101",
       password_hash: "resident-placeholder", role: "RESIDENT",
-      name: "Yvette", surname: "Moreau",
+      name: "Jhouny", surname: "Minettinho",
       age: 82, weight: 58.0, sex: "F", daily_goal: 1500,
       esp32Id: esp1.id, organizationId: org.id,
     }
@@ -99,7 +99,7 @@ async function main() {
       username: "m_fontaine", email: "marguerite.fontaine@residence-test.fr",
       password_hash: "resident-placeholder", role: "RESIDENT",
       room : "102",
-      name: "Marguerite", surname: "Fontaine",
+      name: "Imane", surname: "Taaaaaaarabit",
       age: 78, weight: 63.5, sex: "F", daily_goal: 2000,
       esp32Id: esp2.id, organizationId: org.id,
     }
@@ -121,7 +121,7 @@ async function main() {
       username: "roger_blanche", email: "roger.blanche@residence-test.fr",
       password_hash: "resident-placeholder", role: "RESIDENT",
       room : "103",
-      name: "Roger", surname: "Blanche",
+      name: "Vini", surname: "Vidi-Vici",
       age: 85, weight: 72.0, sex: "M", daily_goal: 1800,
       esp32Id: esp3.id, organizationId: org.id,
     }

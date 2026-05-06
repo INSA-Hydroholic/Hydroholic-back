@@ -88,5 +88,17 @@ export const HydrationDAO = {
         id: logId
       }
     });
-    }
+    },
+
+    async createMeasure(data: { weight: number; userID: number; source: string; measured_at?: Date }) {
+        return await prisma.hydrationLog.create({
+            data: {
+                weight: data.weight,
+                userID: data.userID,
+                source: data.source,
+                measured_at: data.measured_at || new Date(),
+            }
+        });
+    },
+    
 };

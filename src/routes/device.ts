@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { DeviceDAO } from '../dao/device.dao';
+import { HydrationDAO } from '../dao/hydration.dao';
 import { prisma } from '../lib/prisma';
 
 const router = Router();
@@ -84,7 +85,7 @@ router.post('/:deviceID/logs', async (req, res) => {
         // If all data is ok, create measures in the database using Promise to optimize
         const creationPromises = lines.map(line => {
         const [epoch, weight, stable] = line.split(',');
-        return DeviceDAO.createMeasure({
+        return HydrationDAO.createMeasure({
             weight: parseFloat(weight),
             userID: device.user!.id,
             source: `ESP32_WiFi_${deviceID}`,
@@ -93,6 +94,8 @@ router.post('/:deviceID/logs', async (req, res) => {
         });
 
         await Promise.all(creationPromises);
+
+        await DeviceDAO.updateWeight(deviceID, parseFloat(lines[lines.length - 1].split(',')[1]));
 
         res.status(201).send("Successfully logged all CSV data");
 

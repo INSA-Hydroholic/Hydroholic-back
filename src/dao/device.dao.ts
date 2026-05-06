@@ -15,7 +15,7 @@ export const DeviceDAO = {
     async findUserByMac(mac: string) {
         return await prisma.device.findUnique({
             where: { macAddress: mac },
-            select: { user: { select: { id: true } } }
+            select: { user: { select: { id: true, esp32 : {select : { macAddress: true } } } } }
         });
     },
 
@@ -45,5 +45,35 @@ export const DeviceDAO = {
             where: { organizationId: establishmentID },
             include: { user: { select: { id: true, username: true } } }
         });
-    }
+    },
+
+    async bindUserToDevice(userId, deviceId){
+        const device = await prisma.device.findUnique({
+        where: { macAddress: deviceId }
+        });
+
+        if (!device) throw new Error("Device not found");
+
+        return await prisma.user.update({
+            where: { id: Number(userId) },
+            data: {
+                esp32Id: device.id
+            }
+        });
+    },
+
+    async unbindUserFromDevice(userId, deviceId) {
+        const device = await prisma.device.findUnique({
+            where: { macAddress: deviceId }
+        });
+        
+        if (!device) throw new Error("Device not found");
+
+        return await prisma.user.update({
+            where: { id: Number(userId) }, 
+            data: {
+                esp32Id: null
+            }
+        });
+    },
 };

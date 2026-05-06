@@ -80,7 +80,7 @@ async function main() {
       username: "jhouny_minettinho", email: "jhony.gato@lindao.fr",
       room : "101",
       password_hash: "resident-placeholder", role: "RESIDENT",
-      name: "Jhouny", surname: "Minettinho",
+      name: "Imane", surname: "Taaaaaaarabit",
       age: 82, weight: 58.0, sex: "F", daily_goal: 1500,
       esp32Id: esp1.id, organizationId: org.id,
     }
@@ -99,7 +99,7 @@ async function main() {
       username: "m_fontaine", email: "marguerite.fontaine@residence-test.fr",
       password_hash: "resident-placeholder", role: "RESIDENT",
       room : "102",
-      name: "Imane", surname: "Taaaaaaarabit",
+      name: "Jhouny", surname: "Minettinho",
       age: 78, weight: 63.5, sex: "F", daily_goal: 2000,
       esp32Id: esp2.id, organizationId: org.id,
     }

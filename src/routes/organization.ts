@@ -20,7 +20,8 @@ const DRINK_THRESHOLD_6H = 50; // ml minimum expected in last 6h
 router.get('/:establishmentId/alerts', async (req, res) => {
 try {
     const now = new Date();
-    const startOfDay = new Date(now.setHours(0, 0, 0, 0));
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
     const threeHoursAgo = new Date(now.getTime() - 3 * 60 * 60 * 1000);
     const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000);
     const hour = new Date().getHours();
@@ -47,7 +48,7 @@ try {
     });
 
     const alertsToCreate = [];
-    
+
     // For each user, fetch consumption in said daytimes
     for (const user of users) {
         const [consumed3h, consumed6h, consumedToday] = await Promise.all([
@@ -58,20 +59,24 @@ try {
 
         const demoConsumption = await HydrationDAO.getTotalConsumedByRange(user.id, demoTime, now);
 
+        if(consumedToday >= parseInt(user.daily_goal)){
+            continue;
+        }
+
         if (demoConsumption < DRINK_THRESHOLD_3H) {
-            if (user.name === 'Jhouny') {
+            if (user.surname === 'Minettinho') {
                 alertsToCreate.push({
                     userId: user.id,
                     severity: 'YELLOW',
-                    message: `$Jhouny hasn't drunk in the last minute — you're not a true hydroholic.`
+                    message: `Jhouny hasn't drunk in the last minute — you're not a true hydroholic.`
                 });
             }
             else {
-                alertsToCreate.push({
-                    userId: user.id,
-                    severity: 'YELLOW',
-                    message: `${user.surname} hasn't drunk in the last 1 minute — monitoring recommended.`
-                });
+                // alertsToCreate.push({
+                //     userId: user.id,
+                //     severity: 'YELLOW',
+                //     message: `${user.surname} hasn't drunk in the last 1 minute — monitoring recommended.`
+                // });
             }
         }
 
@@ -109,6 +114,29 @@ try {
         });
         }
 
+
+        // Rule 5: If a user's ESP hasn't sent battery or weight information for a while, consider them as disconnected
+        if (user.esp32) {
+            const secondsSinceBattery = user.esp32.batteryMeasuredAt
+                ? (now.getTime() - new Date(user.esp32.batteryMeasuredAt).getTime()) / 1000
+                : Infinity;
+
+            const secondsSinceUpdate = (now.getTime() - new Date(user.esp32.weightMeasuredAt).getTime()) / 1000;
+
+            if (secondsSinceUpdate > 60) {
+                alertsToCreate.push({
+                    userId: user.id,
+                    severity: 'GREY',
+                    message: `Device ${user.esp32.id} is disconnected. Last update was at ${user.esp32.weightMeasuredAt}.`
+                });
+            } else if (secondsSinceBattery > 30) {
+                alertsToCreate.push({
+                    userId: user.id,
+                    severity: 'GREY',
+                    message: `Device ${user.esp32.id} hasn't sent battery since ${user.esp32.batteryMeasuredAt}. It might have no battery.`
+                });
+            }
+        }
     }
 
     // If we want to store the alerts

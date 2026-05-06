@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { UserDAO } from '../dao/user.dao';
 import { HydrationDAO } from '../dao/hydration.dao';
+import { DeviceDAO } from '../dao/device.dao';
 import { authMiddleware } from '../middlewares/auth.middleware';
 import { prisma } from '../lib/prisma';
 import { HydrationService } from '../service/hydration.service';
@@ -35,6 +36,7 @@ router.get('/', async (req, res) => {
       age: true,
       weight: true,
       sex: true,
+      esp32: true
       }
     });
     res.json(users);
@@ -316,6 +318,39 @@ router.get('/:userId/alerts', async (req, res) => {
     console.error('Alert analysis error:', error);
     res.status(500).json({ message: `Server error: ${error}` });
   }
+});
+
+router.post('/:userId/:deviceId/bindDevice', async (req, res) => {
+  // check if in use
+  const { userId, deviceId } = req.params;
+  const user = await DeviceDAO.findUserByMac(deviceId);
+  if (user) {
+    return res.status(400).json({ message: 'Device already in use' });
+  }
+
+  await DeviceDAO.bindUserToDevice(userId, deviceId);
+  res.json({ message: 'Device successfully bound to user' });
+
+});
+
+router.post('/:userId/:deviceId/unbindDevice', async (req, res) => {
+  // check if in use
+  const { userId, deviceId } = req.params;
+  const targetUserId = parseInt(userId);
+
+  const result = await DeviceDAO.findUserByMac(deviceId);
+  console.log('Unbinding device', deviceId, 'from user', userId, 'Found user:', result);
+  if (!result.user) {
+    return res.status(400).json({ message: 'Device not bound to any user' });
+  }
+  if (result.user.id !== targetUserId) {
+      return res.status(400).json({ message: 'Device not bound to this user' });
+  }
+
+
+  await DeviceDAO.unbindUserFromDevice(userId, deviceId);
+  res.json({ message: 'Device successfully unbound from user' });
+
 });
 
 export default router;

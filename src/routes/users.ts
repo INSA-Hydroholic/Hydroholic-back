@@ -295,8 +295,8 @@ router.get('/:userId/alerts', async (req, res) => {
     const { evaluated_time } = req.query;
     const startTime = new Date();
     if (evaluated_time) {
-      // Offset current time by the evaluated_time (in minutes) to get the start time for the analysis
-      startTime.setMinutes(now.getMinutes() - parseInt(evaluated_time as string));
+      // Offset current time by the evaluated_time (in seconds) to get the start time for the analysis
+      startTime.setSeconds(now.getSeconds() - parseInt(evaluated_time as string));
     }
 
     const user = await prisma.user.findUnique({

@@ -57,50 +57,70 @@ export const HydrationDAO = {
          * so we need to apply a correction factor to get a more accurate estimate
          * of the actual water volume consumed.
          */
-        const minRateDelta = 5; // Minimum weight change (per minute) in grams to consider as actual water intake - derived from empirical observations of the device's noise level
-        const maxRateDelta = 300; // Drinking more than 300g (300ml) per minute is unlikely, so we can ignore such spikes as noise or refills.
         let totalVolume = 0;
-        let valid_weights = [];
-        for (let i = 1; i < weights.length; i++) {
-            let delta = weights[i].weight - weights[i - 1].weight;
-            if (delta > 0) {  // Weight decreases when water is consumed, so we only consider negative deltas. Positive deltas are likely due to noise or refills.
-                // If the rise goes back to a value close to i-2, we save it as a valid weight since it's likely the bottle that was put back after a drink, otherwise we ignore it as noise or a refill event.
-                const drink_delta = Math.abs(weights[i].weight - weights[i - 2].weight);
-                if (i > 1 && drink_delta < minRateDelta) {
-                    valid_weights.push(weights[i]);
-                } 
+        let baselineWeight: number | null = null;
+        let baselineTime: Date | null = null;
+
+        /** 
+         * Tuning Parameters 
+         * Adjust these based on your specific load cell noise and bottle hardware.
+         */
+        const LIFTED_THRESHOLD = 30;    // grams. Readings below this mean the bottle is off the scale. (Assumes empty bottle > 30g)
+        const MIN_DRINK_DELTA = 10;     // grams. Minimum drop in weight to count as a drink.
+        const REFILL_THRESHOLD = 30;    // grams. Increase in weight to be considered a refill.
+        const MAX_DRIFT_RATE = 1.0;     // grams/min. A loss faster than this is a drink; slower is evaporation/sensor drift.
+
+        for (const record of weights) {
+            const currentWeight = record.weight;
+            const currentTime = record.measured_at;
+
+            // 1. Ignore zero/tare readings entirely (bottle is removed)
+            if (currentWeight < LIFTED_THRESHOLD) {
+                continue;
+            }
+
+            // 2. Initialize baseline on the first valid resting weight
+            if (baselineWeight === null || baselineTime === null) {
+                baselineWeight = currentWeight;
+                baselineTime = currentTime;
+                continue;
+            }
+
+            const weightDelta = baselineWeight - currentWeight; // Positive = weight lost
+            const timeDeltaMins = (currentTime.getTime() - baselineTime.getTime()) / 60000;
+
+            // 3. Evaluate the state change
+            if (weightDelta >= MIN_DRINK_DELTA) {
+                // Weight dropped significantly. Check if it's a drink or slow sensor drift.
+                const rateOfLoss = weightDelta / timeDeltaMins;
+
+                if (rateOfLoss > MAX_DRIFT_RATE) {
+                    // It was a valid drink!
+                    totalVolume += weightDelta;
+                }
+                
+                // Whether it was a drink or slow drift, reset baseline to the new lower weight
+                baselineWeight = currentWeight;
+                baselineTime = currentTime;
+
+            } else if (weightDelta <= -REFILL_THRESHOLD) {
+                // Weight increased significantly -> Refill event
+                baselineWeight = currentWeight;
+                baselineTime = currentTime;
+
+            } else if (weightDelta < 0 && weightDelta > -REFILL_THRESHOLD) {
+                // Minor weight increase (e.g., placing the cap back on, sensor noise).
+                // Update the baseline UP to prevent accidentally counting it as consumption later.
+                baselineWeight = currentWeight;
+                baselineTime = currentTime;
+                
             } 
-
-            delta = -delta; // Convert to positive volume change
-            const timeDelta = (weights[i].measured_at.getTime() - weights[i - 1].measured_at.getTime()) / 60000; // time difference in minutes
-            const rate = delta / timeDelta;
-            if (rate < minRateDelta) {
-                // Average the two weights to reduce noise for very small changes that are likely due to drifting rather than actual consumption
-                let avgWeight = (weights[i].weight + weights[i - 1].weight) / 2;
-                let avgTime = new Date((weights[i].measured_at.getTime() + weights[i - 1].measured_at.getTime()) / 2);
-                valid_weights.push({ weight: avgWeight, measured_at: avgTime });
-            } else if (rate > maxRateDelta) {
-                // Large decreases in weight are considered as a drink event, so we ignore the latter weight
-                valid_weights.push(weights[i-1]);
-            } else {
-                // For reasonable rates of change, we save both readings
-                valid_weights.push(weights[i-1]);
-                valid_weights.push(weights[i]);
-            }
+            // Note: If (0 <= weightDelta < MIN_DRINK_DELTA), we do NOTHING.
+            // We do not update the baseline. This allows tiny sips (or consecutive 2g readings) 
+            // to accumulate against the original baseline until they cross the MIN_DRINK_DELTA threshold.
         }
 
-        for (let i = 1; i < valid_weights.length; i++) {
-            let delta = valid_weights[i].weight - valid_weights[i - 1].weight;
-            if (delta > 0) { continue; }  // Weight decreases when water is consumed, so we only consider negative deltas. Positive deltas are likely due to noise or refills.
-            delta = -delta; // Convert to positive volume change
-            const timeDelta = (valid_weights[i].measured_at.getTime() - valid_weights[i - 1].measured_at.getTime()) / 60000; // time difference in minutes
-            const rate = delta / timeDelta;
-            if (minRateDelta < rate && rate < maxRateDelta) {
-                console.log(`Valid drink event detected: ${delta}g from ${valid_weights[i - 1].measured_at} to ${valid_weights[i].measured_at} (rate: ${rate.toFixed(2)} g/min)`);
-                totalVolume += delta;
-            }
-        }
-        return totalVolume;
+        return totalVolume;        
     },
 
     //update

@@ -19,21 +19,27 @@ router.post('/register', async (req, res) => {
     try {
         const { deviceID, connectionCode } = req.body;
         if (!deviceID) return res.status(400).json({ message: 'Device ID required' });
-        // TODO : Connection code is optional for now, make compulsory when firmware supports it
         if (!connectionCode) console.warn({ message: 'Connection code required' });
-
+        let Id: string | undefined;
         // Check if connection code exists and matches
         if (connectionCode && !Object.values(connectionCodes).includes(connectionCode)) {
             return res.status(400).json({ message: 'Invalid connection code' });
         } else if (connectionCode) {
             // If connection code is valid, we can delete it to prevent reuse
-            const Id = Object.keys(connectionCodes).find(key => connectionCodes[key] === connectionCode);
+            Id = Object.keys(connectionCodes).find(key => connectionCodes[key] === connectionCode);
             if (Id) delete connectionCodes[Id];
         }
 
         // Check if device already exists        
         const existingDevice = await prisma.device.findUnique({ where: { macAddress: deviceID } });
+
         if (existingDevice) {
+            if (connectionCode && Id) {
+                await prisma.device.update({
+                    where: { macAddress: deviceID },
+                    data: { organizationId: parseInt(Id) }
+                });
+            }
             return res.status(200).json({ message: 'Device already registered', device: existingDevice });
         }
 

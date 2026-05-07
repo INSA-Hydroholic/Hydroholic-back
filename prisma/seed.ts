@@ -70,9 +70,9 @@ async function main() {
     }
   });
 
-  const esp1 = await prisma.device.create({ data: { macAddress: "AA:BB:CC:DD:EE:01", organizationId: org.id } });
-  const esp2 = await prisma.device.create({ data: { macAddress: "AA:BB:CC:DD:EE:02", organizationId: org.id } });
-  const esp3 = await prisma.device.create({ data: { macAddress: "AA:BB:CC:DD:EE:03", organizationId: org.id } });
+  const esp1 = await prisma.device.create({ data: { batteryMeasuredAt: new Date(), macAddress: "AA:BB:CC:DD:EE:01", organizationId: org.id } });
+  const esp2 = await prisma.device.create({ data: { batteryMeasuredAt: new Date(new Date().getTime() - 3600000), macAddress: "AA:BB:CC:DD:EE:02", organizationId: org.id } });
+  const esp3 = await prisma.device.create({ data: { batteryMeasuredAt: new Date(), macAddress: "AA:BB:CC:DD:EE:03", organizationId: org.id } });
 
   // ── Yvette : objectif ATTEINT (goal 1500, 1600 consumed) ──
   const yvette = await prisma.user.create({
@@ -138,7 +138,6 @@ async function main() {
       severity: "YELLOW", isResolved: false,
     }
   });
-
   console.log("Base de données prête");
 }
 

@@ -61,8 +61,8 @@ model Device {
   batteryLevel              Int?
   batteryMeasuredAt         DateTime?
   
-  lastMeasuredWeight        Float?
-  payloadSentAt             DateTime?
+  measuredWeight        Float?
+  weightMeasuredAt             DateTime?
   
   // Reverse 1-1 relationship with User
   user            User?
